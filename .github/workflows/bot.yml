@@ -1,0 +1,67 @@
+name: Bot
+
+on:
+  schedule:
+    - cron: "5 * * * *"     # jede Stunde kurz nach der vollen Stunde (Turbo: Stundenkerzen, Dein Bot: abends)
+  workflow_dispatch:         # "Run workflow"-Knopf zum Starten von Hand
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: bot
+  cancel-in-progress: false
+
+jobs:
+  bot:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.seite.outputs.page_url }}
+    env:
+      TZ: Europe/Berlin
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Pakete installieren
+        run: pip install yfinance pandas
+
+      - name: Bots laufen lassen
+        run: |
+          python melden.py vorher
+          python paper_bot.py
+          python melden.py nachher
+
+      - name: App-Seite bauen
+        run: |
+          python seite_bauen.py
+          mkdir -p seite
+          cp bot_seite.html seite/index.html
+          cp app_symbol.png seite/apple-touch-icon.png
+
+      - name: Depot speichern
+        run: |
+          git config user.name "Paper-Bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add depot.json depot_log.txt turbo_std.json turbo_std_log.txt
+          git diff --cached --quiet || git commit -m "Bot-Lauf $(date +'%d.%m.%Y %H:%M')"
+          git push
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: seite
+      - name: App veröffentlichen
+        id: seite
+        uses: actions/deploy-pages@v4
+
+      - name: Fehler melden
+        if: failure()
+        run: python melden.py fehler
