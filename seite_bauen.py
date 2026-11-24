@@ -291,6 +291,7 @@ daten = {
     "proTag": pro_tag,
     "gebuehr": gebuehr,
     "modus": MODUS,
+    "vorschau": os.environ.get("VORSCHAU") == "1",
     "eurusd": eurusd,
     "repo": REPO,
     "bots": bots,
@@ -378,6 +379,12 @@ button { font-family: inherit; color: inherit; border: 0; background: none; curs
 @keyframes toastRein { from { transform: translate(-50%, -140%); } to { transform: translate(-50%, 0); } }
 @keyframes toastRaus { from { transform: translate(-50%, 0); opacity: 1; } to { transform: translate(-50%, -140%); opacity: 0; } }
 main.anim-tab { animation: rein 0.32s cubic-bezier(.2,.8,.2,1); }
+main.live-ruhig *, main.live-ruhig *::after { animation: none !important; }
+.chartrahmen.still * { animation: none !important; }
+.zoomknopf { width: 26px; height: 22px; border-radius: 7px; background: #1C1C22; color: #C7C7D1; font-size: 15px; font-weight: 700; line-height: 1; display: inline-flex; align-items: center; justify-content: center; }
+.live { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: var(--gruen); white-space: nowrap; }
+.live-punkt { width: 6px; height: 6px; border-radius: 3px; background: var(--gruen); animation: puls 1.6s ease-in-out infinite; }
+@keyframes puls { 0%, 100% { opacity: 1; } 50% { opacity: .3; } }
 main.anim-detail { animation: reinRechts 0.34s cubic-bezier(.2,.8,.2,1); }
 .zeichnen { stroke-dasharray: 1; animation: zeichnen 1.1s cubic-bezier(.3,.7,.2,1) both; }
 .blende { animation: einblenden 0.6s ease-out both; }
@@ -727,7 +734,7 @@ function depotSeite() {
       ${icon(a, 42)}
       <span style="flex-grow:1;min-width:0">
         <span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</span>
-        <span class="klein" style="display:flex;align-items:center;gap:5px;margin-top:3px;white-space:nowrap;overflow:hidden"><span class="punkt" style="background:${a.drin ? (a.stk < 0 ? SHORT_FARBE : GRUEN) : GELB}"></span>${a.drin ? (a.stk < 0 ? "Short · " : "Im Markt · ") + (a.einheit === "BTC" ? Math.abs(a.stk).toLocaleString("de-DE", { maximumFractionDigits: 4 }) + " BTC" : Math.abs(a.stk).toLocaleString("de-DE", { maximumFractionDigits: Math.abs(a.stk) >= 100 ? 0 : 2 }) + " Stk") : "Wartet"}</span>
+        <span class="klein" style="display:flex;align-items:center;gap:5px;margin-top:3px;white-space:nowrap;overflow:hidden"><span class="punkt" style="background:${a.drin ? (a.stk < 0 ? SHORT_FARBE : GRUEN) : GELB}" aria-label="${a.drin ? (a.stk < 0 ? "Short" : "Im Markt") : "Wartet"}"></span><span class="num" style="color:#C7C7D1">${geld(a.preis)}</span>${a.ok ? `<span class="num" style="color:${farbe(a.tag)}">${vz(a.tagProz)}${zahl(a.tagProz, 2)} %</span>` : ""}${LIVE.quellen[a.t] ? '<span class="live-punkt" style="margin-left:2px"></span>' : ""}</span>
       </span>
       <svg width="${a.wert >= 100000 ? 44 : 58}" height="28" viewBox="0 0 58 28" preserveAspectRatio="none" aria-hidden="true" style="flex-shrink:0"><path d="${spark}" fill="none" stroke="${farbe(gv)}" stroke-width="1.6" stroke-linejoin="round"/></svg>
       ${state.liste === "heute" ? `<span style="text-align:right;min-width:86px;flex-shrink:0;white-space:nowrap">
@@ -759,7 +766,7 @@ function depotSeite() {
       </button>
     </div>
   </div>
-  ${istHaupt() ? cloudKarte() : ""}
+  ${istHaupt() ? cloudKarte() + liveKarte() : ""}
   <div style="text-align:center;padding:26px 20px 0">
     <div class="klein" style="font-size:13px;font-weight:500">${istHaupt() ? "Depotwert" : BOT_INFO[AKTIV].kurz + "-Depot"}</div>
     <div class="num" id="depotwert" data-ziel="${wert}" style="font-size:${zahl(wert, 2).length > 12 ? 36 : zahl(wert, 2).length > 9 ? 42 : 46}px;font-weight:700;letter-spacing:-1.6px;margin-top:6px;line-height:1;white-space:nowrap">${betrag(wert, 2)}</div>
@@ -767,6 +774,7 @@ function depotSeite() {
       <span>${diff >= 0 ? "▲" : "▼"}</span><span>${vz(diff)}${betrag(diff, 2)}</span><span style="opacity:.55">·</span><span>${vz(diff)}${zahl(diff / basis * 100, 2)} %</span>
     </div>
     <div class="leise" style="font-size:12px;margin-top:8px">${text}</div>
+    ${LIVE.zeit ? `<div style="margin-top:6px">${liveMarke()}</div>` : ""}
     ${WAEHRUNG === "€" && D.eurusd ? `<div class="leise" style="font-size:11px;margin-top:4px">Umgerechnet mit 1 € = ${zahl(D.eurusd, 4)} $ · Kurse der Aktien bleiben in $</div>` : ""}
   </div>
   ${istHaupt() ? "" : duellKarte(AKTIV)}
@@ -791,7 +799,14 @@ function depotSeite() {
   </div>`;
 }
 
+// Kerzenchart mit Zoom (zwei Finger) und Verschieben (wischen)
+const CHART_ARGS = {}, CHART_INFO = {};
 function kerzenChart(a, W, H1, H2, boxId) {
+  CHART_ARGS[boxId] = { t: a.t, W, H1, H2 };
+  setTimeout(() => bindeGesten(boxId));
+  return `<div id="${boxId}-rahmen" class="chartrahmen">${kerzenInnen(a, W, H1, H2, boxId)}</div>`;
+}
+function kerzenInnen(a, W, H1, H2, boxId) {
   const n = a.kurse.length;
   const dez = a.preis >= 10000 ? 0 : 2;
   let ab;
@@ -806,13 +821,24 @@ function kerzenChart(a, W, H1, H2, boxId) {
     const g = tageZurueck(a.tage[n - 1], zeitraum[state.kRange]);
     ab = Math.max(0, a.tage.findIndex((d) => d >= g));
   }
-  let kerzen = [];
-  for (let i = ab; i < n; i++) {
-    kerzen.push({ d: a.tage[i], o: a.offen[i], h: a.hoch[i], l: a.tief[i], c: a.kurse[i], v: a.vol[i], k10: a.k10[i], k30: a.k30[i], rsi: a.rsi[i], tage: [a.tage[i]] });
+  let alle = [];
+  for (let i = 0; i < n; i++) {
+    alle.push({ d: a.tage[i], o: a.offen[i], h: a.hoch[i], l: a.tief[i], c: a.kurse[i], v: a.vol[i], k10: a.k10[i], k30: a.k30[i], rsi: a.rsi[i], tage: [a.tage[i]] });
   }
   const woche = state.kIntervall === "W" && !istStunde();
-  if (woche) kerzen = zuWochen(kerzen);
+  if (woche) alle = zuWochen(alle);
+  const total = alle.length;
+  // Standard-Ausschnitt aus dem gewählten Zeitraum (1M, 3M ...), danach eigener Zoom
+  const abTag = a.tage[ab];
+  const standardN = Math.max(1, alle.filter((k) => (k.bis || k.d) >= abTag).length);
+  const key = [a.t, AKTIV, woche ? "W" : istStunde() ? "H" : "T", istStunde() ? state.kRangeStd : state.kRange].join("|");
+  const cv = state.cv && state.cv.key === key ? state.cv : null;
+  const minN = Math.min(8, total);
+  const sichtN = Math.max(minN, Math.min(total, cv ? cv.n : standardN));
+  const sichtEnde = Math.max(sichtN, Math.min(total, cv ? (cv.rechts ? total : cv.ende) : total));
+  const kerzen = alle.slice(sichtEnde - sichtN, sichtEnde);
   const anz = kerzen.length;
+  const gezoomt = !!cv && (sichtEnde < total || sichtN !== Math.min(total, standardN));
 
   // Maße: Hauptchart oben, Volumen oder RSI darunter
   const RA = 54, LI = 6, OB = 14, ZW = 22, H = H1 + ZW + H2 + 18;
@@ -828,7 +854,7 @@ function kerzenChart(a, W, H1, H2, boxId) {
   const y = (v) => OB + (hi - v) / (hi - lo) * (H1 - OB - 6);
 
   let svg = "";
-  const yPreis = y(kerzen[anz - 1].c);
+  const yPreis = y(alle[total - 1].c);
   schoeneSchritte(lo, hi, 4).forEach((v) => {
     svg += `<line x1="${LI}" x2="${W - RA}" y1="${y(v)}" y2="${y(v)}" stroke="#1A1A20"/>`;
     if (Math.abs(y(v) - yPreis) > 13) svg += `<text x="${W - RA + 6}" y="${y(v) + 3.5}" fill="#6E6E7A" font-size="10">${zahl(v, v >= 1000 ? 0 : 2)}</text>`;
@@ -869,10 +895,14 @@ function kerzenChart(a, W, H1, H2, boxId) {
     svg += `<text x="${LI + 10}" y="${yk + 3.5}" fill="${a.stk < 0 ? "#F9A8D4" : "#9CCBFF"}" font-size="10" font-weight="600">${text}</text>`;
   }
   // Aktueller Kurs mit Schild rechts
-  const letzte = kerzen[anz - 1], yp = y(letzte.c), pf = letzte.c >= letzte.o ? GRUEN : ROT;
-  svg += `<line x1="${LI}" x2="${W - RA}" y1="${yp}" y2="${yp}" stroke="${pf}" stroke-dasharray="2 3" opacity="0.7"/>`;
-  svg += `<rect x="${W - RA + 2}" y="${yp - 9}" width="${RA - 4}" height="18" rx="5" fill="${pf}"/>`;
-  svg += `<text x="${W - RA / 2}" y="${yp + 3.5}" fill="#0B0B0E" font-size="10" font-weight="700" text-anchor="middle">${zahl(letzte.c, letzte.c >= 1000 ? 0 : 2)}</text>`;
+  // (zeigt immer den neuesten Kurs, auch wenn du in die Vergangenheit geblättert hast)
+  const letzte = kerzen[anz - 1], neueste = alle[total - 1], pf = neueste.c >= neueste.o ? GRUEN : ROT;
+  if (neueste.c >= lo && neueste.c <= hi) {
+    const yp = y(neueste.c);
+    svg += `<line x1="${LI}" x2="${W - RA}" y1="${yp}" y2="${yp}" stroke="${pf}" stroke-dasharray="2 3" opacity="0.7"/>`;
+    svg += `<rect x="${W - RA + 2}" y="${yp - 9}" width="${RA - 4}" height="18" rx="5" fill="${pf}"/>`;
+    svg += `<text x="${W - RA / 2}" y="${yp + 3.5}" fill="#0B0B0E" font-size="10" font-weight="700" text-anchor="middle">${zahl(neueste.c, neueste.c >= 1000 ? 0 : 2)}</text>`;
+  }
 
   // Unteres Feld: Volumen oder RSI
   const y2o = H1 + ZW, y2u = y2o + H2;
@@ -901,14 +931,16 @@ function kerzenChart(a, W, H1, H2, boxId) {
   const chart = `
   <div class="num" style="display:flex;gap:12px;flex-wrap:wrap;padding:0 20px 6px;font-size:11px;font-weight:600">
     ${istStunde() ? `<span class="leise">1 Std</span>` : ""}${woche ? `<span class="leise">Wochenkerzen</span>` : `<span style="color:${GELB}">Ø${KURZ}: ${letzte.k10 == null ? "–" : zahl(letzte.k10, dez)}</span><span style="color:${AKZENT}">Ø${LANG}: ${letzte.k30 == null ? "–" : zahl(letzte.k30, dez)}</span><button class="frage" onclick="erklaere('durchschnitt')" aria-label="Was ist Ø${KURZ} und Ø${LANG}?">?</button>`}
-    ${boxId === "kurschart" ? `<button onclick="zeigeVollbild()" aria-label="Chart im Vollbild" style="margin-left:auto;display:flex;align-items:center;gap:5px;color:#9A9AA6;font-size:11px;font-weight:600"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>Vollbild</button>` : ""}
+    <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px">
+      ${gezoomt ? `<button onclick="zoomeKerzen('${boxId}', 0)" style="color:#B4A8FF;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:#1E1A2E">Jetzt ⟲</button>` : ""}
+      <button onclick="zoomeKerzen('${boxId}', 0.7)" aria-label="Reinzoomen" class="zoomknopf">+</button><button onclick="zoomeKerzen('${boxId}', 1.4)" aria-label="Rauszoomen" class="zoomknopf">−</button>
+    </span>
+    ${boxId === "kurschart" ? `<button onclick="zeigeVollbild()" aria-label="Chart im Vollbild" style="margin-left:6px;display:flex;align-items:center;gap:5px;color:#9A9AA6;font-size:11px;font-weight:600"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>` : ""}
   </div>
   <div class="chartbox" id="${boxId}"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kerzenchart mit Durchschnitten, Bot-Aktionen und ${state.unten === "rsi" ? "RSI" : "Volumen"}">${svg}</svg><div class="tip"></div></div>
   <div class="num" style="padding:0 20px;margin-top:-14px;font-size:11px;font-weight:600">${untenText}</div>`;
 
-  setTimeout(() => {
-    const box = document.getElementById(boxId);
-    if (box) tippbar(box, anz, x, (i) => {
+  CHART_INFO[boxId] = { key, total, n: sichtN, ende: sichtEnde, standardN, W, LI, RA, anz, x, inhalt: (i) => {
       const k = kerzen[i], ae = (k.c / k.o - 1) * 100;
       let h = `<b>${woche ? "Woche ab " + datum(k.d) : datum(k.d)}</b>`;
       h += `<br>Eröffnung: ${geld(k.o)}<br>Hoch: ${geld(k.h)}<br>Tief: ${geld(k.l)}<br>Schluss: ${geld(k.c)} <span style="color:${farbe(ae)}">${vz(ae)}${zahl(ae, 2)} %</span>`;
@@ -917,10 +949,122 @@ function kerzenChart(a, W, H1, H2, boxId) {
       h += `<br><span class="leise">Volumen ${volText(k.v)}${k.rsi != null ? " · RSI " + zahl(k.rsi, 0) : ""}</span>`;
       a.akt.forEach(([t, art]) => { if (k.tage.includes(t)) h += `<br><b style="color:${ART_FARBE[art]}">Bot: ${art}</b>`; });
       return h;
-    });
-  });
+    } };
 
   return chart;
+}
+
+function zeigeKerzenTip(boxId, cx) {
+  const I = CHART_INFO[boxId], box = document.getElementById(boxId);
+  if (!I || !box) return;
+  const svg = box.querySelector("svg"), tip = box.querySelector(".tip"), kreuz = box.querySelector(".kreuz");
+  const rr = svg.getBoundingClientRect(), px = (cx - rr.left) * (I.W / rr.width);
+  let best = 0, abst = 1e9;
+  for (let i = 0; i < I.anz; i++) { const d = Math.abs(I.x(i) - px); if (d < abst) { abst = d; best = i; } }
+  const xx = I.x(best);
+  kreuz.setAttribute("x1", xx); kreuz.setAttribute("x2", xx); kreuz.setAttribute("opacity", "0.6");
+  tip.innerHTML = I.inhalt(best); tip.style.display = "block";
+  const tw = tip.offsetWidth, sx = xx * rr.width / I.W;
+  tip.style.left = (sx > rr.width / 2 ? Math.max(0, sx - tw - 10) : Math.min(rr.width - tw, sx + 10)) + "px";
+}
+function versteckeKerzenTip(boxId) {
+  const box = document.getElementById(boxId);
+  if (!box) return;
+  const tip = box.querySelector(".tip"), k = box.querySelector(".kreuz");
+  if (tip) tip.style.display = "none";
+  if (k) k.setAttribute("opacity", "0");
+}
+function zeichneKerzen(boxId) {
+  const r = document.getElementById(boxId + "-rahmen"), A = CHART_ARGS[boxId];
+  if (!r || !A) return;
+  if (r._raf) return;
+  r._raf = requestAnimationFrame(() => {
+    r._raf = 0;
+    const a = D.assets.find((x) => x.t === A.t);
+    if (!a) return;
+    r.classList.add("still");
+    r.innerHTML = kerzenInnen(a, A.W, A.H1, A.H2, boxId);
+  });
+}
+function setzeKerzenSicht(boxId, n, ende) {
+  const I = CHART_INFO[boxId];
+  if (!I) return;
+  n = Math.max(Math.min(8, I.total), Math.min(I.total, Math.round(n)));
+  ende = Math.max(n, Math.min(I.total, Math.round(ende)));
+  state.cv = { key: I.key, n, ende, rechts: ende >= I.total };
+  zeichneKerzen(boxId);
+}
+// Knöpfe: + / − zoomen um die rechte Kante, "Jetzt" springt zurück
+function zoomeKerzen(boxId, faktor) {
+  const I = CHART_INFO[boxId];
+  if (!I) return;
+  if (!faktor) { state.cv = null; zeichneKerzen(boxId); return; }
+  const mitte = I.ende - I.n / 2, n = I.n * faktor;
+  setzeKerzenSicht(boxId, n, I.ende >= I.total ? I.total : mitte + n / 2);
+}
+function bindeGesten(boxId) {
+  const r = document.getElementById(boxId + "-rahmen");
+  if (!r || r._gebunden) return;
+  r._gebunden = true;
+  r.style.touchAction = "pan-y";
+  const zeiger = new Map();
+  let modus = null, start = null, timer = null;
+  const flaeche = () => { const svg = r.querySelector(".chartbox > svg"), I = CHART_INFO[boxId]; const rr = svg.getBoundingClientRect(); return { links: rr.left + I.LI * rr.width / I.W, breite: (I.W - I.LI - I.RA) * rr.width / I.W }; };
+  r.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("button")) return;
+    zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    try { r.setPointerCapture(e.pointerId); } catch (f) {}
+    const I = CHART_INFO[boxId];
+    if (zeiger.size === 1) {
+      start = { x: e.clientX, y: e.clientY, n: I.n, ende: I.ende, zeit: Date.now() };
+      modus = "warte";
+      clearTimeout(timer);
+      // Gedrückt halten: Fadenkreuz mit allen Werten der Kerze
+      if (e.pointerType !== "mouse") timer = setTimeout(() => { if (modus === "warte") { modus = "kreuz"; zeigeKerzenTip(boxId, start.x); } }, 280);
+    } else if (zeiger.size === 2) {
+      clearTimeout(timer); versteckeKerzenTip(boxId);
+      const [p1, p2] = [...zeiger.values()];
+      start = { abstand: Math.max(20, Math.abs(p1.x - p2.x)), mitte: (p1.x + p2.x) / 2, n: I.n, ende: I.ende };
+      modus = "zoom";
+    }
+  });
+  r.addEventListener("pointermove", (e) => {
+    if (!zeiger.has(e.pointerId)) { if (e.pointerType === "mouse" && !e.buttons) zeigeKerzenTip(boxId, e.clientX); return; }
+    zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (modus === "kreuz") { zeigeKerzenTip(boxId, e.clientX); return; }
+    if (modus === "zoom" && zeiger.size >= 2) {
+      // Zwei Finger: auseinander = reinzoomen, zusammen = rauszoomen
+      const [p1, p2] = [...zeiger.values()];
+      const f = Math.max(20, Math.abs(p1.x - p2.x)) / start.abstand;
+      const F = flaeche(), anteil = Math.max(0, Math.min(1, (start.mitte - F.links) / F.breite));
+      const fest = start.ende - start.n + anteil * start.n, n = start.n / f;
+      setzeKerzenSicht(boxId, n, fest + (1 - anteil) * n);
+      return;
+    }
+    if (modus === "warte" || modus === "pan") {
+      const dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (modus === "warte" && Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) { modus = "pan"; clearTimeout(timer); versteckeKerzenTip(boxId); }
+      if (modus === "pan") {
+        // Wischen nach rechts = weiter zurück in die Vergangenheit
+        const proKerze = flaeche().breite / start.n;
+        setzeKerzenSicht(boxId, start.n, start.ende - dx / proKerze);
+      }
+    }
+  });
+  const loslassen = (e) => {
+    const war = modus;
+    zeiger.delete(e.pointerId);
+    clearTimeout(timer);
+    if (war === "warte" && start && start.zeit && Date.now() - start.zeit < 280) zeigeKerzenTip(boxId, start.x);
+    if (zeiger.size === 0) modus = null;
+    else if (zeiger.size === 1 && war === "zoom") {
+      const [p] = [...zeiger.values()], I = CHART_INFO[boxId];
+      start = { x: p.x, y: p.y, n: I.n, ende: I.ende, zeit: 0 }; modus = "pan";
+    }
+  };
+  r.addEventListener("pointerup", loslassen);
+  r.addEventListener("pointercancel", loslassen);
+  r.addEventListener("pointerleave", (e) => { if (e.pointerType === "mouse" && !e.buttons) versteckeKerzenTip(boxId); });
 }
 
 // ---------- Detail einer Aktie ----------
@@ -958,8 +1102,8 @@ function detailSeite() {
 
   const steuerung = `
   <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 16px 0">
-    <div style="display:flex;gap:2px">${istStunde() ? ["1T", "3T", "1W", "1M"].map((r) => `<button class="chip ${r === state.kRangeStd ? "aktiv" : ""}" style="padding:7px 11px" onclick="setze({kRangeStd:'${r}'})">${r}</button>`).join("") : ["1M", "3M", "6M", "1J"].map((r) => `<button class="chip ${r === state.kRange ? "aktiv" : ""}" style="padding:7px 11px" onclick="setze({kRange:'${r}'})">${r}</button>`).join("")}</div>
-    ${istStunde() ? `<span class="pill" style="color:${TURBO_FARBE};background:rgba(255,159,90,0.12)">Stundenkerzen</span>` : `<div style="display:flex;gap:2px;background:#141418;border-radius:12px;padding:2px">${[["T", "Tag"], ["W", "Woche"]].map(([id, l]) => `<button class="chip ${id === state.kIntervall ? "aktiv" : ""}" style="padding:6px 10px;border-radius:10px" onclick="setze({kIntervall:'${id}'})">${l}</button>`).join("")}</div>`}
+    <div style="display:flex;gap:2px">${istStunde() ? ["1T", "3T", "1W", "1M"].map((r) => `<button class="chip ${r === state.kRangeStd ? "aktiv" : ""}" style="padding:7px 11px" onclick="setze({kRangeStd:'${r}', cv:null})">${r}</button>`).join("") : ["1M", "3M", "6M", "1J"].map((r) => `<button class="chip ${r === state.kRange ? "aktiv" : ""}" style="padding:7px 11px" onclick="setze({kRange:'${r}', cv:null})">${r}</button>`).join("")}</div>
+    ${istStunde() ? `<span class="pill" style="color:${TURBO_FARBE};background:rgba(255,159,90,0.12)">Stundenkerzen</span>` : `<div style="display:flex;gap:2px;background:#141418;border-radius:12px;padding:2px">${[["T", "Tag"], ["W", "Woche"]].map(([id, l]) => `<button class="chip ${id === state.kIntervall ? "aktiv" : ""}" style="padding:6px 10px;border-radius:10px" onclick="setze({kIntervall:'${id}', cv:null})">${l}</button>`).join("")}</div>`}
   </div>
   <div style="display:flex;gap:18px;padding:12px 20px 0;font-size:13px;font-weight:600">
     ${[["vol", "Volumen"], ["rsi", "RSI"]].map(([id, l]) => `<button onclick="setze({unten:'${id}'})" style="padding:4px 0;color:${state.unten === id ? TEXT : "#858592"};border-bottom:2px solid ${state.unten === id ? AKZENT : "transparent"}">${l}</button>`).join("")}
@@ -1020,10 +1164,11 @@ function detailSeite() {
   <div style="padding:20px 20px 0;display:flex;align-items:center;gap:14px">
     ${icon(a, 52)}
     <div><div class="num" style="font-size:34px;font-weight:700;letter-spacing:-1px;line-height:1">${geld(a.preis)}</div>
-    <div class="num" style="font-size:14px;font-weight:600;margin-top:8px;color:${farbe(a.tag)}">${a.tag >= 0 ? "▲" : "▼"} ${vz(a.tag)}${zahl(a.tag, dez)} $ · ${vz(a.tag)}${zahl(a.tagProz, 2)} % <span class="leise" style="font-weight:500">am letzten Tag</span></div></div>
+    <div class="num" style="font-size:14px;font-weight:600;margin-top:8px;color:${farbe(a.tag)}">${a.tag >= 0 ? "▲" : "▼"} ${vz(a.tag)}${zahl(a.tag, dez)} $ · ${vz(a.tag)}${zahl(a.tagProz, 2)} % <span class="leise" style="font-weight:500">${LIVE.quellen[a.t] ? "heute" : "am letzten Tag"}</span></div>${liveMarke(a.t) ? `<div style="margin-top:6px">${liveMarke(a.t)}</div>` : ""}</div>
   </div>
   ${tageswerte}
   <div style="margin-top:14px">${chart}</div>
+  <div class="leise" style="font-size:11px;text-align:center;margin-top:8px">Zwei Finger: zoomen · Wischen: zurückblättern · Halten: Details</div>
   ${steuerung}
   <div class="karte" style="margin-top:22px">
     <div style="display:flex;justify-content:space-between;align-items:center"><h3>${istHaupt() ? "Deine Position" : "Position · " + botName()}</h3>
@@ -1376,9 +1521,9 @@ function zeigeVollbild() {
       <button class="rund" onclick="schliesseVollbild()" aria-label="Vollbild schließen" style="background:#1C1C22"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="scrollx" style="padding:4px 12px 8px;align-items:center">
-      ${istStunde() ? ["1T", "3T", "1W", "1M"].map((r) => knopf(r === state.kRangeStd, r, `setzeVoll({kRangeStd:'${r}'})`)).join("") : ["1M", "3M", "6M", "1J"].map((r) => knopf(r === state.kRange, r, `setzeVoll({kRange:'${r}'})`)).join("")}
+      ${istStunde() ? ["1T", "3T", "1W", "1M"].map((r) => knopf(r === state.kRangeStd, r, `setzeVoll({kRangeStd:'${r}', cv:null})`)).join("") : ["1M", "3M", "6M", "1J"].map((r) => knopf(r === state.kRange, r, `setzeVoll({kRange:'${r}', cv:null})`)).join("")}
       <span style="width:10px;flex-shrink:0"></span>
-      ${istStunde() ? "" : [["T", "Tag"], ["W", "Woche"]].map(([id, l]) => knopf(id === state.kIntervall, l, `setzeVoll({kIntervall:'${id}'})`)).join("")}
+      ${istStunde() ? "" : [["T", "Tag"], ["W", "Woche"]].map(([id, l]) => knopf(id === state.kIntervall, l, `setzeVoll({kIntervall:'${id}', cv:null})`)).join("")}
       <span style="width:10px;flex-shrink:0"></span>
       ${[["vol", "Volumen"], ["rsi", "RSI"]].map(([id, l]) => knopf(id === state.unten, l, `setzeVoll({unten:'${id}'})`)).join("")}
     </div>
@@ -1983,7 +2128,7 @@ function render(nachOben, anim) {
     `<button class="tab ${state.tab === id ? "aktiv" : ""}" onclick="tab('${id}')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id]}</svg>${label}</button>`).join("");
   if (nachOben) window.scrollTo(0, 0);
   const main = document.getElementById("app");
-  if (anim) { main.className = ""; void main.offsetWidth; main.className = anim === "detail" ? "anim-detail" : "anim-tab"; }
+  if (anim) { main.className = ""; void main.offsetWidth; main.className = anim === "detail" ? "anim-detail" : "anim-tab"; LIVE.beruehrt = Date.now(); }
   else main.className = "";
   const dw = document.getElementById("depotwert");
   if (dw && anim) zaehle(dw);
@@ -2013,6 +2158,134 @@ window.addEventListener("popstate", (e) => {
 });
 let letzteBreite = window.innerWidth;
 window.addEventListener("resize", () => { if (window.innerWidth !== letzteBreite) { letzteBreite = window.innerWidth; render(false); if (state.vollbild) zeigeVollbild(); } });
+// ---------- Live-Kurse ----------
+// Solange die App offen ist, holt sie alle paar Sekunden aktuelle Preise.
+// Bitcoin: Coinbase (ohne Anmeldung). Aktien und Gold: Finnhub (kostenloser Schlüssel, nur auf dem Handy gespeichert).
+// Die Bots handeln davon unabhängig weiter nur nach fertigen Kerzen.
+const LIVE = { zeit: null, quellen: {}, fehler: false, beruehrt: 0 };
+function liveSchluessel() { try { return localStorage.getItem("finnhub_key") || ""; } catch (e) { return ""; } }
+function heuteText() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+document.addEventListener("pointerdown", () => { LIVE.beruehrt = Date.now(); }, true);
+async function holeJson(url) {
+  const r = await fetch(url, { cache: "no-store" });
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  return r.json();
+}
+let LIVE_RUNDE = 0;
+async function holeLive() {
+  if (document.hidden) return;
+  const neu = {};
+  const aktienRunde = LIVE_RUNDE++ % 3 === 0;
+  if (D.vorschau) {
+    // Vorschau: Preise bewegen sich ein bisschen, damit man den Effekt sieht
+    D.assets.forEach((a) => { if (a.tagOk) neu[a.t] = a.preis * (1 + (Math.random() - 0.5) * 0.004); });
+  } else {
+    const btc = D.assets.find((a) => a.t === "BTC-USD");
+    if (btc) {
+      try { const j = await holeJson("https://api.coinbase.com/v2/prices/BTC-USD/spot"); const p = parseFloat(j.data.amount); if (p > 0) neu["BTC-USD"] = p; }
+      catch (e) { try { const j = await holeJson("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"); const p = parseFloat(j.price); if (p > 0) neu["BTC-USD"] = p; } catch (f) {} }
+    }
+    const key = liveSchluessel();
+    if (key && aktienRunde) {
+      await Promise.all(D.assets.filter((a) => a.t !== "BTC-USD").map(async (a) => {
+        try { const j = await holeJson(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(a.t)}&token=${encodeURIComponent(key)}`); if (j && j.c > 0) neu[a.t] = j.c; } catch (e) {}
+      }));
+    }
+  }
+  if (aktienRunde) LIVE.fehler = !Object.keys(neu).some((t) => t !== "BTC-USD") && !!liveSchluessel();
+  if (!Object.keys(neu).length) return;
+  let geaendert = false;
+  const heute = heuteText(), jetzt = Date.now();
+  const stundeText = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0") + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  const setze = (R, i, p) => { R.kurse[i] = p; R.hoch[i] = Math.max(R.hoch[i], p); R.tief[i] = Math.min(R.tief[i], p); };
+  const anhaengen = (R, zeit, p) => { const vor = R.kurse[R.kurse.length - 1]; R.tage.push(zeit); R.offen.push(vor); R.hoch.push(Math.max(vor, p)); R.tief.push(Math.min(vor, p)); R.kurse.push(p); R.vol.push(0); };
+  D.assets.forEach((a) => {
+    const p = neu[a.t];
+    if (p == null || !a.tagOk) return;
+    LIVE.quellen[a.t] = true;
+    if (Math.abs(p - a.preis) > 1e-9) geaendert = true;
+    a.preis = p;
+    // Tageskerze von heute: mitbewegen oder neu anfangen
+    const T = a.tagReihe, n = T.kurse.length;
+    if (D.vorschau || T.tage[n - 1] === heute) setze(T, n - 1, p);
+    else if (T.tage[n - 1] < heute && Math.abs(p / T.kurse[n - 1] - 1) > 1e-6) anhaengen(T, heute, p);
+    const m = T.kurse.length, vorher = T.tage[m - 1] === heute || D.vorschau ? T.kurse[m - 2] : T.kurse[m - 1];
+    a.tag = p - vorher; a.tagProz = a.tag / vorher * 100;
+    T.rsi = rsiBerechnen(T.kurse, 14);
+    // Stundenkerze: laufende Stunde mitbewegen oder neue Stunde anfangen
+    const S = a.stdReihe;
+    if (S && S.tage.length) {
+      const k = S.tage.length, start = zeitpunkt(S.tage[k - 1]).getTime();
+      if (D.vorschau || (jetzt >= start && jetzt - start < 3600000)) setze(S, k - 1, p);
+      else if (jetzt - start >= 3600000 && Math.abs(p / S.kurse[k - 1] - 1) > 1e-6) {
+        const schritte = Math.floor((jetzt - start) / 3600000);
+        anhaengen(S, stundeText(new Date(start + schritte * 3600000)), p);
+      }
+      S.rsi = rsiBerechnen(S.kurse, 14);
+    }
+  });
+  LIVE.zeit = new Date();
+  LIGA = null;
+  // Neu zeichnen, aber nicht während du gerade tippst, wischst oder ein Fenster offen ist
+  const ruhig = Date.now() - LIVE.beruehrt > 4000 && !document.getElementById("sheet");
+  if (geaendert && ruhig && state.vollbild) { zeigeVollbild(); return; }
+  if (geaendert && ruhig) {
+    const y = window.scrollY;
+    document.getElementById("app").classList.add("live-ruhig");
+    render(false);
+    document.getElementById("app").classList.add("live-ruhig");
+    window.scrollTo(0, y);
+  } else aktualisiereLiveText();
+}
+function liveText() {
+  if (!LIVE.zeit) return "";
+  // Läuft die Verbindung, tickt die Uhr jede Sekunde mit. Kommt länger nichts, steht dort die letzte Zeit.
+  const frisch = Date.now() - LIVE.zeit.getTime() < 60000;
+  const z = frisch ? new Date() : LIVE.zeit;
+  return (frisch ? "" : "zuletzt ") + String(z.getHours()).padStart(2, "0") + ":" + String(z.getMinutes()).padStart(2, "0") + ":" + String(z.getSeconds()).padStart(2, "0");
+}
+setInterval(aktualisiereLiveText, 1000);
+function liveMarke(t) {
+  if (!LIVE.zeit || (t && !LIVE.quellen[t])) return "";
+  return `<span class="live"><span class="live-punkt"></span>Live · <span class="live-zeit">${liveText()}</span></span>`;
+}
+function aktualisiereLiveText() { document.querySelectorAll(".live-zeit").forEach((el) => { el.textContent = liveText(); }); }
+function liveKarte() {
+  const key = liveSchluessel();
+  const aktien = D.assets.filter((a) => a.t !== "BTC-USD").length;
+  const mitLive = Object.keys(LIVE.quellen).length;
+  return `
+  <button class="karte zeile" onclick="zeigeLiveEinstellung()" style="display:flex;align-items:center;gap:12px;padding:14px;width:calc(100% - 32px)">
+    <span class="icon" style="width:40px;height:40px;background:#13261E"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${GRUEN}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></span>
+    <span style="flex-grow:1;min-width:0">
+      <span style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700">Live-Kurse ${LIVE.zeit ? liveMarke() : ""}</span>
+      <span class="klein" style="display:block;margin-top:2px">${D.vorschau ? "Vorschau: Preise werden simuliert" : key ? (LIVE.fehler ? "Keine Antwort von Finnhub, Schlüssel prüfen" : `${mitLive} von ${D.assets.length} Werten live`) : `Bitcoin live · für die ${aktien} Aktien Schlüssel eintragen`}</span>
+    </span>
+    <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true" style="flex-shrink:0;opacity:.4"><path d="M1 1l6 6-6 6" fill="none" stroke="${TEXT}" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>`;
+}
+function zeigeLiveEinstellung() {
+  const key = liveSchluessel();
+  zeigeInfo("Live-Kurse", `Solange die App offen ist, holt sie alle paar Sekunden die aktuellen Preise. Depotwert, Positionen und die laufende Kerze im Chart bewegen sich mit.<br><br>
+    <b>Bitcoin</b> kommt ohne Anmeldung von Coinbase.<br>
+    <b>Aktien und Gold</b> brauchen einen kostenlosen Schlüssel von <b>finnhub.io</b>. Er bleibt nur auf diesem iPhone gespeichert.<br><br>
+    <input id="livekey" type="text" inputmode="latin" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Finnhub-Schlüssel einfügen" value="${esc(key)}" style="width:100%;padding:13px 14px;border-radius:12px;border:1px solid #2A2A33;background:#0F0F13;color:${TEXT};font-size:15px;font-family:inherit">
+    <button onclick="speichereLiveSchluessel()" style="margin-top:10px;width:100%;padding:13px;border-radius:12px;background:${GRUEN};color:#0B0B0E;font-weight:700;font-size:15px">Speichern</button>
+    ${key ? `<button onclick="document.getElementById('livekey').value='';speichereLiveSchluessel()" style="margin-top:8px;width:100%;padding:11px;border-radius:12px;background:#1C1C22;font-weight:600;font-size:14px">Schlüssel entfernen</button>` : ""}
+    <div class="leise" style="font-size:12px;margin-top:12px;line-height:1.5">US-Aktien bewegen sich nur, während die Börse offen ist (etwa 15:30 bis 22:00 Uhr). Die Bots handeln weiter nur nach fertigen Kerzen, die Live-Preise sind zum Zuschauen.</div>`);
+}
+function speichereLiveSchluessel() {
+  const el = document.getElementById("livekey");
+  const v = el ? el.value.trim() : "";
+  try { if (v) localStorage.setItem("finnhub_key", v); else localStorage.removeItem("finnhub_key"); } catch (e) {}
+  schliesseTag();
+  zeigeHinweis(v ? "Schlüssel gespeichert" : "Schlüssel entfernt", v ? "Die Aktien werden ab jetzt live aktualisiert." : "Nur Bitcoin wird noch live aktualisiert.");
+  setTimeout(holeLive, 300);
+}
+setInterval(holeLive, 5000);
+setTimeout(holeLive, 1200);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) setTimeout(holeLive, 400); });
+
 render(true, "tab");
 setTimeout(zeigeToast, 700);
 </script>
