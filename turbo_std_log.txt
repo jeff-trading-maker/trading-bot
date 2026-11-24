@@ -9,3 +9,12 @@
 2026-11-23 21:30 | GLD | Kurs 332.99 | GEKAUFT 3.000093 | Konto 0.00 | Anteile 3.000093 | Gesamtwert 999.00
 2026-11-24 14:00 | BTC-USD | Kurs 59942.00 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
 2026-11-24 15:00 | BTC-USD | Kurs 60389.49 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-24 15:30 | AAPL | Kurs 351.43 | abwarten | Konto 0.00 | Anteile 2.856818 | Gesamtwert 1003.97
+2026-11-24 15:30 | MSFT | Kurs 494.48 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-24 15:30 | NVDA | Kurs 152.46 | abwarten | Konto 0.00 | Anteile 6.04777 | Gesamtwert 922.01
+2026-11-24 15:30 | GOOGL | Kurs 278.22 | abwarten | Konto 0.00 | Anteile 3.538666 | Gesamtwert 984.53
+2026-11-24 15:30 | AMZN | Kurs 253.62 | abwarten | Konto 0.00 | Anteile 3.911209 | Gesamtwert 991.96
+2026-11-24 15:30 | JPM | Kurs 315.81 | abwarten | Konto 0.00 | Anteile 3.154208 | Gesamtwert 996.13
+2026-11-24 15:30 | KO | Kurs 97.40 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-24 15:30 | XOM | Kurs 158.41 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-24 15:30 | GLD | Kurs 328.96 | abwarten | Konto 0.00 | Anteile 3.000093 | Gesamtwert 986.91
