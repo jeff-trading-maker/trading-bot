@@ -1,0 +1,10 @@
+2026-11-23 | AAPL | Kurs 349.08 | GEKAUFT 2.861811 | Konto 0.00 | Anteile 2.861811 | Gesamtwert 999.00
+2026-11-23 | MSFT | Kurs 492.50 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | NVDA | Kurs 165.05 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | GOOGL | Kurs 282.10 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | AMZN | Kurs 255.39 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | JPM | Kurs 316.66 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | KO | Kurs 95.88 | GEKAUFT 10.419284 | Konto 0.00 | Anteile 10.419284 | Gesamtwert 999.00
+2026-11-23 | XOM | Kurs 156.90 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | GLD | Kurs 333.02 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-23 | BTC-USD | Kurs 61210.98 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
