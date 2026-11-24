@@ -50,9 +50,15 @@ jobs:
         run: |
           git config user.name "Paper-Bot"
           git config user.email "bot@users.noreply.github.com"
-          git add depot.json depot_log.txt turbo_std.json turbo_std_log.txt short.json short_log.txt turbo_short.json turbo_short_log.txt
+          for f in depot.json depot_log.txt turbo_std.json turbo_std_log.txt short.json short_log.txt turbo_short.json turbo_short_log.txt; do
+            if [ -f "$f" ]; then git add "$f"; fi
+          done
           git diff --cached --quiet || git commit -m "Bot-Lauf $(date +'%d.%m.%Y %H:%M')"
-          git push
+          # Falls du während des Laufs etwas hochgeladen hast: erst holen, dann speichern
+          for versuch in 1 2 3; do
+            git pull --rebase origin main && git push && break
+            sleep 5
+          done
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
