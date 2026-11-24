@@ -59,6 +59,7 @@ jobs:
             git pull --rebase origin main && git push && break
             sleep 5
           done
+          if git status -sb | head -1 | grep -q ahead; then echo "Depot konnte nicht gespeichert werden"; exit 1; fi
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -66,6 +67,15 @@ jobs:
           path: seite
       - name: App veröffentlichen
         id: seite
+        continue-on-error: true
+        uses: actions/deploy-pages@v4
+      # Manchmal findet GitHub die gerade hochgeladene Seite noch nicht: kurz warten und noch mal
+      - name: Kurz warten
+        if: steps.seite.outcome == 'failure'
+        run: sleep 30
+      - name: App veröffentlichen (2. Versuch)
+        id: seite2
+        if: steps.seite.outcome == 'failure'
         uses: actions/deploy-pages@v4
 
       - name: Fehler melden
