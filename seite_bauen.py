@@ -2128,7 +2128,7 @@ function render(nachOben, anim) {
     `<button class="tab ${state.tab === id ? "aktiv" : ""}" onclick="tab('${id}')"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[id]}</svg>${label}</button>`).join("");
   if (nachOben) window.scrollTo(0, 0);
   const main = document.getElementById("app");
-  if (anim) { main.className = ""; void main.offsetWidth; main.className = anim === "detail" ? "anim-detail" : "anim-tab"; LIVE.beruehrt = Date.now(); }
+  if (anim) { main.className = ""; void main.offsetWidth; main.className = anim === "detail" ? "anim-detail" : "anim-tab"; LIVE.animBis = Date.now() + 1200; }
   else main.className = "";
   const dw = document.getElementById("depotwert");
   if (dw && anim) zaehle(dw);
@@ -2162,7 +2162,7 @@ window.addEventListener("resize", () => { if (window.innerWidth !== letzteBreite
 // Solange die App offen ist, holt sie alle paar Sekunden aktuelle Preise.
 // Bitcoin: Coinbase (ohne Anmeldung). Aktien und Gold: Finnhub (kostenloser Schlüssel, nur auf dem Handy gespeichert).
 // Die Bots handeln davon unabhängig weiter nur nach fertigen Kerzen.
-const LIVE = { zeit: null, quellen: {}, fehler: false, beruehrt: 0 };
+const LIVE = { zeit: null, quellen: {}, fehler: false, beruehrt: 0, animBis: 0, gezeigt: false };
 function liveSchluessel() { try { return localStorage.getItem("finnhub_key") || ""; } catch (e) { return ""; } }
 function heuteText() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 document.addEventListener("pointerdown", () => { LIVE.beruehrt = Date.now(); }, true);
@@ -2227,15 +2227,31 @@ async function holeLive() {
   LIVE.zeit = new Date();
   LIGA = null;
   // Neu zeichnen, aber nicht während du gerade tippst, wischst oder ein Fenster offen ist
-  const ruhig = Date.now() - LIVE.beruehrt > 4000 && !document.getElementById("sheet");
-  if (geaendert && ruhig && state.vollbild) { zeigeVollbild(); return; }
-  if (geaendert && ruhig) {
+  const ruhig = Date.now() - LIVE.beruehrt > 4000 && Date.now() > LIVE.animBis && !document.getElementById("sheet");
+  // Beim ersten Mal immer zeichnen, damit der Live-Timer sofort erscheint
+  const erstesMal = !LIVE.gezeigt;
+  if ((geaendert || erstesMal) && ruhig && state.vollbild) { zeigeVollbild(); LIVE.gezeigt = true; return; }
+  if (geaendert || erstesMal) {
+    if (!ruhig) { if (erstesMal && !LIVE.wartet) { LIVE.wartet = true; setTimeout(holeLiveAnzeigen, 1500); } aktualisiereLiveText(); return; }
+    LIVE.gezeigt = true;
     const y = window.scrollY;
     document.getElementById("app").classList.add("live-ruhig");
     render(false);
     document.getElementById("app").classList.add("live-ruhig");
     window.scrollTo(0, y);
   } else aktualisiereLiveText();
+}
+// Wenn gerade nicht gezeichnet werden durfte: kurz danach nachholen
+function holeLiveAnzeigen() {
+  const ruhig = Date.now() - LIVE.beruehrt > 4000 && Date.now() > LIVE.animBis && !document.getElementById("sheet");
+  if (!ruhig) { setTimeout(holeLiveAnzeigen, 1500); return; }
+  LIVE.wartet = false;
+  if (LIVE.gezeigt) return;
+  const y = window.scrollY;
+  render(false);
+  document.getElementById("app").classList.add("live-ruhig");
+  window.scrollTo(0, y);
+  LIVE.gezeigt = true;
 }
 function liveText() {
   if (!LIVE.zeit) return "";
