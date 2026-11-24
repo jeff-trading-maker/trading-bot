@@ -77,8 +77,15 @@ def lies_log(datei):
     return liste
 
 
+ARTEN = {"GEKAUFT": "Kauf", "VERKAUFT": "Verkauf", "SHORT": "Short", "GEDECKT": "Eindecken"}
+
+
+def art_von(aktion):
+    return "" if aktion == "abwarten" else ARTEN.get(aktion.split()[0], "Verkauf")
+
+
 def aktionen_aus(liste, t):
-    return [[e["tag"], "Kauf" if e["aktion"].startswith("GEKAUFT") else "Verkauf", e["kurs"],
+    return [[e["tag"], art_von(e["aktion"]), e["kurs"],
              float(e["aktion"].split()[1]) if len(e["aktion"].split()) > 1 else 0]
             for e in liste if e["ticker"] == t and e["aktion"] != "abwarten"]
 
@@ -110,7 +117,7 @@ pro_tag = {}
 letzter_je_aktie = {}
 for e in eintraege:
     alt_wert = letzter_je_aktie.get(e["ticker"], float(start_pro_aktie))
-    art = "" if e["aktion"] == "abwarten" else ("Kauf" if e["aktion"].startswith("GEKAUFT") else "Verkauf")
+    art = art_von(e["aktion"])
     pro_tag.setdefault(e["tag"], []).append([e["ticker"], round(e["gesamt"] - alt_wert, 2), art])
     letzter_je_aktie[e["ticker"]] = e["gesamt"]
 
@@ -155,7 +162,7 @@ for t in aktien:
         print(t, ": keine Kursdaten")
     eigene = [e for e in eintraege if e["ticker"] == t]
     preis = kurse[-1] if kurse else (eigene[-1]["kurs"] if eigene else 0)
-    aktionen = [[e["tag"], "Kauf" if e["aktion"].startswith("GEKAUFT") else "Verkauf", e["kurs"],
+    aktionen = [[e["tag"], art_von(e["aktion"]), e["kurs"],
                  float(e["aktion"].split()[1]) if len(e["aktion"].split()) > 1 else 0]
                 for e in eigene if e["aktion"] != "abwarten"]
     werte.append({
@@ -203,7 +210,7 @@ def bot_daten(zustand, liste):
     tagliste, letzt = {}, {}
     for e in liste:
         alt_wert = letzt.get(e["ticker"], float(start_pro_aktie))
-        art = "" if e["aktion"] == "abwarten" else ("Kauf" if e["aktion"].startswith("GEKAUFT") else "Verkauf")
+        art = art_von(e["aktion"])
         tag = tagliste.setdefault(e["tag"][:10], {})
         eintrag = tag.setdefault(e["ticker"], [e["ticker"], 0.0, []])
         eintrag[1] += e["gesamt"] - alt_wert
@@ -230,16 +237,25 @@ def bot_daten(zustand, liste):
             "proTag": tagliste, "assets": je_aktie}
 
 
-bots = {"haupt": dict(bot_daten(depot, eintraege), name="Dein Bot", kurz=kurz, lang=lang, trend=False, intervall="1d"),
-        "turbo": None}
+bots = {"haupt": dict(bot_daten(depot, eintraege), name="Dein Bot", kurz=kurz, lang=lang, trend=False, intervall="1d", richtung="long"),
+        "turbo": None, "short": None, "tshort": None}
 if os.path.exists(turbo_zustand_datei):
     with open(turbo_zustand_datei, "r") as f:
         turbo_depot = json.load(f)
     bots["turbo"] = dict(bot_daten(turbo_depot, lies_log(turbo_log_datei)),
-                         name="Turbo-Bot", kurz=turbo_kurz, lang=turbo_lang, trend=True, intervall="1h")
+                         name="Turbo-Bot", kurz=turbo_kurz, lang=turbo_lang, trend=True, intervall="1h", richtung="long")
+# Short-Bots (setzen auf fallende Kurse)
+for schluessel, datei, logname, name, k, l, iv in [("short", "short.json", "short_log.txt", "Short-Bot", kurz, lang, "1d"),
+                                                   ("tshort", "turbo_short.json", "turbo_short_log.txt", "Turbo-Short", turbo_kurz, turbo_lang, "1h")]:
+    pfad = os.path.join(ordner, datei)
+    if os.path.exists(pfad):
+        with open(pfad, "r") as f:
+            zustand = json.load(f)
+        bots[schluessel] = dict(bot_daten(zustand, lies_log(os.path.join(ordner, logname))),
+                                name=name, kurz=k, lang=l, trend=True, intervall=iv, richtung="short")
 
-# Stundenkerzen für die Charts des Turbo-Bots
-if bots["turbo"]:
+# Stundenkerzen für die Charts der Stunden-Bots
+if bots["turbo"] or bots["tshort"]:
     print("Lade Stundenkurse ...")
     try:
         std = yf.download(aktien, period="60d", interval="1h", auto_adjust=True, progress=False)
@@ -419,7 +435,21 @@ main.anim-tab .muenze, main.anim-detail .muenze { display: inline-block; animati
 const D = %%DATEN%%;
 let KURZ = D.kurz, LANG = D.lang;
 const BOTS = D.bots || { haupt: null, turbo: null };
-const TURBO_FARBE = "#FF9F5A";
+const TURBO_FARBE = "#FF9F5A", SHORT_FARBE = "#F472B6", TSHORT_FARBE = "#22D3EE";
+// Alle Bots mit Name, Farbe und Symbol
+const BOT_INFO = {
+  haupt: { name: "Dein Bot", kurz: "Dein Bot", farbe: "#9D8CFF", bg: "#23202F", pfad: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/>' },
+  turbo: { name: "Turbo-Bot", kurz: "Turbo", farbe: TURBO_FARBE, bg: "#2E2117", pfad: '<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/>' },
+  short: { name: "Short-Bot", kurz: "Short", farbe: SHORT_FARBE, bg: "#2E1726", pfad: '<path d="M3 6l7 7 4-4 7 7"/><path d="M21 10v6h-6"/>' },
+  tshort: { name: "Turbo-Short", kurz: "T-Short", farbe: TSHORT_FARBE, bg: "#10282D", pfad: '<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/><path d="M19 15v6M16.5 18.5L19 21l2.5-2.5"/>' },
+};
+const BOT_IDS = ["haupt", "turbo", "short", "tshort"];
+const istEinstieg = (art) => art === "Kauf" || art === "Short";
+const rundenProz = (art, k, v) => (art === "Short" ? (1 - v / k) * 100 : (v / k - 1) * 100);
+const ART_FARBE = { Kauf: "#6BB6FF", Verkauf: "#F4F4F6", Short: SHORT_FARBE, Eindecken: "#F4F4F6" };
+const ART_BG = { Kauf: "rgba(107,182,255,0.13)", Verkauf: "rgba(244,244,246,0.10)", Short: "rgba(244,114,182,0.14)", Eindecken: "rgba(244,244,246,0.10)" };
+const ART_WORT = { Kauf: "gekauft", Verkauf: "verkauft", Short: "short gegangen", Eindecken: "eingedeckt" };
+const ART_BUCHSTABE = { Kauf: "K", Verkauf: "V", Short: "S", Eindecken: "E" };
 let AKTIV = "haupt";
 const GRUEN = "#3DDC97", ROT = "#FF7A7A", GELB = "#F5B94A", AKZENT = "#9D8CFF", TEXT = "#F4F4F6";
 const BOT_KAUF = "#6BB6FF", BOT_VERKAUF = "#F4F4F6";
@@ -451,9 +481,8 @@ function tageZurueck(s, n) {
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
 function stueck(a) {
-  return a.einheit === "BTC"
-    ? a.stk.toLocaleString("de-DE", { maximumFractionDigits: 6 }) + " BTC"
-    : zahl(a.stk, 2) + " Stk";
+  const m = Math.abs(a.stk);
+  return (a.einheit === "BTC" ? m.toLocaleString("de-DE", { maximumFractionDigits: 6 }) + " BTC" : zahl(m, 2) + " Stk") + (a.stk < 0 ? " short" : "");
 }
 function schnitt(w, n) {
   const aus = []; let s = 0;
@@ -547,8 +576,8 @@ function aktiviere(id) {
     const z = B.assets[a.t] || { stk: 0, konto: D.start, akt: [], startTag: "", startKurs: null };
     a.stk = z.stk; a.konto = z.konto; a.akt = z.akt; a.startTag = z.startTag; a.startKurs = z.startKurs == null ? a.preis : z.startKurs;
     a.wert = Math.round((a.konto + a.stk * a.preis) * 100) / 100;
-    a.drin = a.stk > 0;
-    a.letzterKauf = a.akt.filter((x) => x[1] === "Kauf").slice(-1)[0] || null;
+    a.drin = a.stk !== 0;
+    a.letzterKauf = a.akt.filter((x) => istEinstieg(x[1])).slice(-1)[0] || null;
     if (!a.ok) return;
     const k = a.kurse, n = k.length;
     a.k10 = schnitt(k, KURZ); a.k30 = schnitt(k, LANG);
@@ -566,8 +595,8 @@ function aktiviere(id) {
   D.assets.forEach((a) => {
     let kauf = null;
     a.akt.forEach(([tag, art, p]) => {
-      if (art === "Kauf") kauf = [tag, p];
-      else if (kauf) { RUNDEN.push({ a, von: kauf[0], bis: tag, k: kauf[1], v: p, proz: (p / kauf[1] - 1) * 100 }); kauf = null; }
+      if (istEinstieg(art)) kauf = [tag, p, art];
+      else if (kauf) { RUNDEN.push({ a, von: kauf[0], bis: tag, k: kauf[1], v: p, art: kauf[2], proz: rundenProz(kauf[2], kauf[1], p) }); kauf = null; }
     });
   });
   RUNDEN.sort((x, y) => (x.bis < y.bis ? 1 : -1));
@@ -575,14 +604,16 @@ function aktiviere(id) {
   return wechsel;
 }
 const istTurbo = () => AKTIV === "turbo";
+const istHaupt = () => AKTIV === "haupt";
+const istShort = () => !!(BOTS[AKTIV] && BOTS[AKTIV].richtung === "short");
 const istStunde = () => !!(BOTS[AKTIV] && BOTS[AKTIV].intervall === "1h");
 const naechsteKerze = () => (istStunde() ? "in der nächsten Stunde" : "am nächsten Handelstag");
 const kerzenWort = () => (istStunde() ? "Stunden" : "Tage");
-const botFarbe = () => (istTurbo() ? TURBO_FARBE : AKZENT);
-const botName = () => (istTurbo() ? "Turbo-Bot" : "Dein Bot");
+const botFarbe = () => BOT_INFO[AKTIV].farbe;
+const botName = () => BOT_INFO[AKTIV].name;
 AKTIV = "";
 aktiviere("haupt");
-const state = { tab: "depot", sicht: "haupt", detailBot: "haupt", detail: null, mitteilungen: false, markiert: 0, vollbild: false, push: { kauf: true, verkauf: true, bericht: false }, liste: "gesamt", dRange: "Alle", kRangeStd: "1W", kRange: "3M", kIntervall: "T", unten: "vol", monat: Math.max(MONATE.length - 1, 0), nurNah: false };
+const state = { tab: "depot", depotWahl: liesWahl("bot_wahl_depot", "haupt"), turboWahl: liesWahl("bot_wahl_turbo", "turbo"), sicht: "haupt", detailBot: "haupt", detail: null, mitteilungen: false, markiert: 0, vollbild: false, push: { kauf: true, verkauf: true, bericht: false }, liste: "gesamt", dRange: "Alle", kRangeStd: "1W", kRange: "3M", kIntervall: "T", unten: "vol", monat: Math.max(MONATE.length - 1, 0), nurNah: false };
 
 // ---------- Hilfen für Charts ----------
 function pfad(werte, x, y) {
@@ -696,7 +727,7 @@ function depotSeite() {
       ${icon(a, 42)}
       <span style="flex-grow:1;min-width:0">
         <span style="display:block;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</span>
-        <span class="klein" style="display:flex;align-items:center;gap:5px;margin-top:3px;white-space:nowrap;overflow:hidden"><span class="punkt" style="background:${a.drin ? GRUEN : GELB}"></span>${a.drin ? "Im Markt · " + (a.einheit === "BTC" ? a.stk.toLocaleString("de-DE", { maximumFractionDigits: 4 }) + " BTC" : a.stk.toLocaleString("de-DE", { maximumFractionDigits: a.stk >= 100 ? 0 : 2 }) + " Stk") : "Wartet"}</span>
+        <span class="klein" style="display:flex;align-items:center;gap:5px;margin-top:3px;white-space:nowrap;overflow:hidden"><span class="punkt" style="background:${a.drin ? (a.stk < 0 ? SHORT_FARBE : GRUEN) : GELB}"></span>${a.drin ? (a.stk < 0 ? "Short · " : "Im Markt · ") + (a.einheit === "BTC" ? Math.abs(a.stk).toLocaleString("de-DE", { maximumFractionDigits: 4 }) + " BTC" : Math.abs(a.stk).toLocaleString("de-DE", { maximumFractionDigits: Math.abs(a.stk) >= 100 ? 0 : 2 }) + " Stk") : "Wartet"}</span>
       </span>
       <svg width="${a.wert >= 100000 ? 44 : 58}" height="28" viewBox="0 0 58 28" preserveAspectRatio="none" aria-hidden="true" style="flex-shrink:0"><path d="${spark}" fill="none" stroke="${farbe(gv)}" stroke-width="1.6" stroke-linejoin="round"/></svg>
       ${state.liste === "heute" ? `<span style="text-align:right;min-width:86px;flex-shrink:0;white-space:nowrap">
@@ -712,12 +743,15 @@ function depotSeite() {
   return `
   <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 20px 0">
     <div style="display:flex;align-items:center;gap:10px">
-      ${istTurbo() ? `<span class="icon" style="width:34px;height:34px;background:#2E2117"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TURBO_FARBE}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg></span>` : `<span class="icon" style="width:34px;height:34px;background:#23202F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B4A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/></svg></span>`}
-      <div><div style="font-size:15px;font-weight:600;display:flex;align-items:center">${istTurbo() ? `Turbo-Bot<button class="frage" onclick="erklaere('turbo')" aria-label="Was ist der Turbo-Bot?">?</button>` : "Paper-Depot"}</div>
+      ${state.botDepot ? `<button class="rund" onclick="zurueck()" aria-label="Zurück" style="width:34px;height:34px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>` : ""}
+      ${istHaupt() ? `<span class="icon" style="width:34px;height:34px;background:#23202F"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#B4A8FF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BOT_INFO.haupt.pfad}</svg></span>` : `<span class="icon" style="width:34px;height:34px;background:${BOT_INFO[AKTIV].bg}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${botFarbe()}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${BOT_INFO[AKTIV].pfad}</svg></span>`}
+      <div><div style="font-size:15px;font-weight:600;display:flex;align-items:center">${wahlPaar().filter((id) => BOTS[id]).length > 1 && !state.botDepot
+        ? `<button onclick="zeigeBotWahl()" aria-label="Bot wechseln" style="display:inline-flex;align-items:center;gap:5px;font-weight:600;white-space:nowrap">${istHaupt() ? "Paper-Depot" : botName()}<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9A9AA6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>`
+        : (istHaupt() ? "Paper-Depot" : botName())}${istHaupt() ? "" : `<button class="frage" onclick="erklaere('${AKTIV}')" aria-label="Was ist der ${botName()}?">?</button>`}</div>
       <div class="klein" style="display:flex;align-items:center;gap:5px"><span class="punkt" style="background:${GRUEN}"></span><span class="jetzt num">${jetztText()}</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      ${istTurbo() ? `<span class="pill" style="color:${TURBO_FARBE};background:rgba(255,159,90,0.12)">1 Std</span>` : `<span class="pill" style="color:#B4A8FF;background:#1E1A2E">Spielgeld</span>`}
+      ${istHaupt() ? `<span class="pill" style="color:#B4A8FF;background:#1E1A2E">Spielgeld</span>` : state.botDepot ? "" : `<span class="pill" style="color:${botFarbe()};background:${BOT_INFO[AKTIV].bg}">${istShort() ? "Short" : istStunde() ? "1 Std" : ""}</span>`}
       ${D.eurusd ? `<button class="glocke" onclick="wechsleWaehrung()" aria-label="Währung wechseln, gerade ${WAEHRUNG === "€" ? "Euro" : "Dollar"}" style="font-size:16px;font-weight:700;color:${WAEHRUNG === "€" ? "#B4A8FF" : TEXT}">${WAEHRUNG}</button>` : ""}
       <button class="glocke" onclick="oeffneMitteilungen()" aria-label="Mitteilungen${ungelesen() ? ", " + ungelesen() + " ungelesen" : ""}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
@@ -725,9 +759,9 @@ function depotSeite() {
       </button>
     </div>
   </div>
-  ${istTurbo() ? "" : cloudKarte()}
+  ${istHaupt() ? cloudKarte() : ""}
   <div style="text-align:center;padding:26px 20px 0">
-    <div class="klein" style="font-size:13px;font-weight:500">${istTurbo() ? "Turbo-Depot" : "Depotwert"}</div>
+    <div class="klein" style="font-size:13px;font-weight:500">${istHaupt() ? "Depotwert" : BOT_INFO[AKTIV].kurz + "-Depot"}</div>
     <div class="num" id="depotwert" data-ziel="${wert}" style="font-size:${zahl(wert, 2).length > 12 ? 36 : zahl(wert, 2).length > 9 ? 42 : 46}px;font-weight:700;letter-spacing:-1.6px;margin-top:6px;line-height:1;white-space:nowrap">${betrag(wert, 2)}</div>
     <div class="num pill" style="display:inline-flex;gap:6px;margin-top:14px;font-size:14px;padding:6px 12px;border-radius:12px;color:${farbe(diff)};background:${diff >= 0 ? GRUEN_BG : ROT_BG}">
       <span>${diff >= 0 ? "▲" : "▼"}</span><span>${vz(diff)}${betrag(diff, 2)}</span><span style="opacity:.55">·</span><span>${vz(diff)}${zahl(diff / basis * 100, 2)} %</span>
@@ -735,7 +769,7 @@ function depotSeite() {
     <div class="leise" style="font-size:12px;margin-top:8px">${text}</div>
     ${WAEHRUNG === "€" && D.eurusd ? `<div class="leise" style="font-size:11px;margin-top:4px">Umgerechnet mit 1 € = ${zahl(D.eurusd, 4)} $ · Kurse der Aktien bleiben in $</div>` : ""}
   </div>
-  ${istTurbo() ? duellKarte() : ""}
+  ${istHaupt() ? "" : duellKarte(AKTIV)}
   <div style="margin-top:18px">${chart}</div>
   <div class="chips">${["1W", "1M", "3M", "Alle"].map((r) => `<button class="chip ${r === state.dRange ? "aktiv" : ""}" onclick="setze({dRange:'${r}'})">${r}</button>`).join("")}</div>
   <div class="legende"><span><span class="strich" style="background:${botFarbe()}"></span>${botName()}</span><span><span class="strich" style="border-top:2px dashed #6E6E7A;height:0"></span>Buy-and-Hold</span></div>
@@ -818,20 +852,21 @@ function kerzenChart(a, W, H1, H2, boxId) {
   a.akt.forEach(([t, art]) => {
     const i = kerzen.findIndex((k) => k.tage.includes(t));
     if (i < 0) return;
-    const kauf = art === "Kauf", xx = x(i), f = kauf ? BOT_KAUF : BOT_VERKAUF;
+    const kauf = art === "Kauf" || art === "Eindecken", xx = x(i), f = ART_FARBE[art] || BOT_VERKAUF;
     const ende = kauf ? y(kerzen[i].l) + 3 : y(kerzen[i].h) - 3;
     const yy = Math.max(OB + 9, Math.min(H1 - 10, kauf ? ende + 15 : ende - 15));
     svg += `<line x1="${xx}" x2="${xx}" y1="${ende}" y2="${kauf ? yy - 8 : yy + 8}" stroke="${f}" stroke-width="1.2" opacity="0.9"/>`;
     svg += `<circle cx="${xx}" cy="${yy}" r="8.5" fill="${f}" stroke="#0B0B0E" stroke-width="2"/>`;
-    svg += `<text x="${xx}" y="${yy + 3.6}" fill="#0B0B0E" font-size="10" font-weight="800" text-anchor="middle">${kauf ? "K" : "V"}</text>`;
+    svg += `<text x="${xx}" y="${yy + 3.6}" fill="#0B0B0E" font-size="10" font-weight="800" text-anchor="middle">${ART_BUCHSTABE[art] || "V"}</text>`;
   });
   // Linie mit dem Kaufkurs der offenen Position
   if (kaufLinie && kaufLinie >= lo && kaufLinie <= hi) {
-    const yk = y(kaufLinie), text = "KAUF " + stueck(a) + "  " + zahl(kaufLinie, dez);
+    const yk = y(kaufLinie), text = (a.stk < 0 ? "SHORT " : "KAUF ") + stueck(a).replace(" short", "") + "  " + zahl(kaufLinie, dez);
     const bw = text.length * 5.6 + 12;
-    svg += `<line x1="${LI}" x2="${W - RA}" y1="${yk}" y2="${yk}" stroke="#6BB6FF" stroke-dasharray="4 3" opacity="0.8"/>`;
-    svg += `<rect x="${LI + 4}" y="${yk - 9}" width="${bw}" height="18" rx="5" fill="#13263A" stroke="#6BB6FF" stroke-opacity="0.6"/>`;
-    svg += `<text x="${LI + 10}" y="${yk + 3.5}" fill="#9CCBFF" font-size="10" font-weight="600">${text}</text>`;
+    const lf = a.stk < 0 ? SHORT_FARBE : "#6BB6FF";
+    svg += `<line x1="${LI}" x2="${W - RA}" y1="${yk}" y2="${yk}" stroke="${lf}" stroke-dasharray="4 3" opacity="0.8"/>`;
+    svg += `<rect x="${LI + 4}" y="${yk - 9}" width="${bw}" height="18" rx="5" fill="${a.stk < 0 ? "#2E1726" : "#13263A"}" stroke="${lf}" stroke-opacity="0.6"/>`;
+    svg += `<text x="${LI + 10}" y="${yk + 3.5}" fill="${a.stk < 0 ? "#F9A8D4" : "#9CCBFF"}" font-size="10" font-weight="600">${text}</text>`;
   }
   // Aktueller Kurs mit Schild rechts
   const letzte = kerzen[anz - 1], yp = y(letzte.c), pf = letzte.c >= letzte.o ? GRUEN : ROT;
@@ -880,7 +915,7 @@ function kerzenChart(a, W, H1, H2, boxId) {
       if (!woche && k.k10 != null) h += `<br><span class="fleck" style="background:${GELB}"></span>Ø ${KURZ}: ${geld(k.k10)}`;
       if (!woche && k.k30 != null) h += `<br><span class="fleck" style="background:${AKZENT}"></span>Ø ${LANG}: ${geld(k.k30)}`;
       h += `<br><span class="leise">Volumen ${volText(k.v)}${k.rsi != null ? " · RSI " + zahl(k.rsi, 0) : ""}</span>`;
-      a.akt.forEach(([t, art]) => { if (k.tage.includes(t)) h += `<br><b style="color:${art === "Kauf" ? BOT_KAUF : BOT_VERKAUF}">Bot: ${art}</b>`; });
+      a.akt.forEach(([t, art]) => { if (k.tage.includes(t)) h += `<br><b style="color:${ART_FARBE[art]}">Bot: ${art}</b>`; });
       return h;
     });
   });
@@ -895,7 +930,7 @@ function detailSeite() {
   const kopf = `
   <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 0">
     <button class="rund" onclick="zurueck()" aria-label="Zurück"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
-    <div style="text-align:center"><div style="font-size:16px;font-weight:600">${esc(a.name)}</div><div class="klein" style="display:flex;align-items:center;justify-content:center;gap:5px">${esc(a.t)}${BOTS.turbo ? ` · <span class="punkt" style="background:${botFarbe()}"></span><span style="color:${botFarbe()};font-weight:600">${istTurbo() ? "Turbo · Stunden" : "Dein Bot"}</span>` : ""}</div></div>
+    <div style="text-align:center"><div style="font-size:16px;font-weight:600">${esc(a.name)}</div><div class="klein" style="display:flex;align-items:center;justify-content:center;gap:5px">${esc(a.t)}${BOT_IDS.filter((id) => BOTS[id]).length > 1 ? ` · <span class="punkt" style="background:${botFarbe()}"></span><span style="color:${botFarbe()};font-weight:600">${BOT_INFO[AKTIV].kurz}${istStunde() ? " · Stunden" : ""}</span>` : ""}</div></div>
     <div style="width:44px"></div>
   </div>
   <div class="scrollx" id="chipleiste" style="padding:14px 16px 0">${chips}</div>`;
@@ -928,22 +963,21 @@ function detailSeite() {
   </div>
   <div style="display:flex;gap:18px;padding:12px 20px 0;font-size:13px;font-weight:600">
     ${[["vol", "Volumen"], ["rsi", "RSI"]].map(([id, l]) => `<button onclick="setze({unten:'${id}'})" style="padding:4px 0;color:${state.unten === id ? TEXT : "#858592"};border-bottom:2px solid ${state.unten === id ? AKZENT : "transparent"}">${l}</button>`).join("")}
-    <span class="leise" style="margin-left:auto;font-weight:500;font-size:12px;align-self:center"><span style="display:inline-flex;align-items:center;gap:4px"><span style="width:14px;height:14px;border-radius:7px;background:${BOT_KAUF};color:#0B0B0E;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">K</span>Bot-Kauf</span>
-    <span style="display:inline-flex;align-items:center;gap:4px;margin-left:8px"><span style="width:14px;height:14px;border-radius:7px;background:${BOT_VERKAUF};color:#0B0B0E;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">V</span>Verkauf</span></span>
+    <span class="leise" style="margin-left:auto;font-weight:500;font-size:12px;align-self:center">${(istShort() ? [["Short", "Short"], ["Eindecken", "Eindecken"]] : [["Kauf", "Bot-Kauf"], ["Verkauf", "Verkauf"]]).map(([art, l], i) => `<span style="display:inline-flex;align-items:center;gap:4px;${i ? "margin-left:8px" : ""}"><span style="width:14px;height:14px;border-radius:7px;background:${ART_FARBE[art]};color:#0B0B0E;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${ART_BUCHSTABE[art]}</span>${l}</span>`).join("")}</span>
   </div>`;
 
   // Position
   let position;
   if (a.drin && a.letzterKauf) {
-    const erg = a.stk * (a.preis - a.letzterKauf[2]), ergP = (a.preis / a.letzterKauf[2] - 1) * 100;
+    const erg = a.stk * (a.preis - a.letzterKauf[2]), ergP = rundenProz(a.letzterKauf[1], a.letzterKauf[2], a.preis);
     position = `<div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 12px;margin-top:14px">
       <div><div class="klein">Bestand</div><div class="num" style="font-size:15px;font-weight:600;margin-top:3px">${stueck(a)}</div></div>
-      <div><div class="klein">Gekauft am ${kurzDatum(a.letzterKauf[0])}</div><div class="num" style="font-size:15px;font-weight:600;margin-top:3px">${geld(a.letzterKauf[2])}</div></div>
+      <div><div class="klein">${a.stk < 0 ? "Short seit" : "Gekauft am"} ${kurzDatum(a.letzterKauf[0])}</div><div class="num" style="font-size:15px;font-weight:600;margin-top:3px">${geld(a.letzterKauf[2])}</div></div>
       <div><div class="klein">Wert</div><div class="num" style="font-size:15px;font-weight:600;margin-top:3px">${geldW(a.wert)}</div></div>
       <div><div class="klein">Ergebnis</div><div class="num" style="font-size:15px;font-weight:600;margin-top:3px;color:${farbe(erg)}">${vz(erg)}${betrag(erg, 2)} · ${vz(ergP)}${zahl(ergP, 1)} %</div></div>
     </div>`;
   } else {
-    position = `<div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Keine Anteile. Der ${istTurbo() ? "Turbo-Bot" : "Bot"} hält hier <b class="num">${geldW(a.wert)}</b> Bargeld und wartet auf das nächste Kaufsignal.</div>`;
+    position = `<div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Keine Anteile. Der ${istHaupt() ? "Bot" : botName()} hält hier <b class="num">${geldW(a.wert)}</b> Bargeld und wartet auf das nächste ${istShort() ? "Short-Signal" : "Kaufsignal"}.</div>`;
   }
 
   // Ausblick
@@ -952,6 +986,9 @@ function detailSeite() {
   const wo = spanne(krypto ? 7 : 5), mo = spanne(krypto ? 30 : 20);
   let schwelle;
   if (a.noetig == null || Math.abs(a.noetig) > 25) schwelle = `Ein neues Signal ist ${naechsteKerze()} praktisch nicht erreichbar, dafür liegen die beiden Durchschnitte zu weit auseinander.`;
+  else if (istShort()) schwelle = a.auf
+    ? `Ein <b>Short-Signal</b> käme ${naechsteKerze()} bei einem Schlusskurs unter <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "nichts tun, weil er schon short ist" : "short gehen"}.`
+    : `<b>Eindecken</b> käme ${naechsteKerze()} bei einem Schlusskurs über <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "seine Short-Position schließen" : "nichts tun, weil er gerade nicht short ist"}.`;
   else if (a.auf) schwelle = `Ein <b>Verkaufssignal</b> käme ${naechsteKerze()} bei einem Schlusskurs unter <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "verkaufen" : "nichts tun, weil er keine Anteile hat"}.`;
   else schwelle = `Ein <b>Kaufsignal</b> käme ${naechsteKerze()} bei einem Schlusskurs über <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "nichts tun, weil er schon Anteile hat" : "kaufen"}.`;
   const alt = a.tagReihe.kurse.slice(-40), zuk = krypto ? 30 : 20, ges = alt.length + zuk;
@@ -975,7 +1012,7 @@ function detailSeite() {
   const akt = a.akt.slice().reverse();
   const aktionen = akt.length
     ? akt.map(([t, art, p]) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 0">
-        <div><div style="font-size:14px;font-weight:600;color:${art === "Kauf" ? BOT_KAUF : BOT_VERKAUF}">${art}</div><div class="klein num" style="margin-top:2px">${datum(t)}</div></div>
+        <div><div style="font-size:14px;font-weight:600;color:${ART_FARBE[art]}">${art}</div><div class="klein num" style="margin-top:2px">${datum(t)}</div></div>
         <div class="num" style="font-size:14px;font-weight:600">${geld(p)}</div></div>`).join("")
     : `<div class="leise" style="font-size:13px;padding:14px 0">Der Bot hat bei ${esc(a.name)} noch nicht gehandelt.</div>`;
 
@@ -989,8 +1026,8 @@ function detailSeite() {
   <div style="margin-top:14px">${chart}</div>
   ${steuerung}
   <div class="karte" style="margin-top:22px">
-    <div style="display:flex;justify-content:space-between;align-items:center"><h3>${istTurbo() ? "Position des Turbo-Bots" : "Deine Position"}</h3>
-    <span class="pill" style="color:${a.drin ? GRUEN : GELB};background:${a.drin ? GRUEN_BG : GELB_BG}">${a.drin ? "Im Markt" : "Wartet"}</span></div>
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3>${istHaupt() ? "Deine Position" : "Position · " + botName()}</h3>
+    <span class="pill" style="color:${a.drin ? (a.stk < 0 ? SHORT_FARBE : GRUEN) : GELB};background:${a.drin ? (a.stk < 0 ? "rgba(244,114,182,0.14)" : GRUEN_BG) : GELB_BG}">${a.drin ? (a.stk < 0 ? "Short" : "Im Markt") : "Wartet"}</span></div>
     ${position}
   </div>
   ${bilanzKarte(a)}
@@ -1006,9 +1043,9 @@ function detailSeite() {
   <div class="karte">
     <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="display:flex;align-items:center">Signal<button class="frage" onclick="erklaere('signal')" aria-label="Wie entsteht ein Signal?">?</button></h3>
     <span class="pill" style="color:${farbe(a.auf ? 1 : -1)};background:${a.auf ? GRUEN_BG : ROT_BG}">${a.auf ? "▲ Aufwärtstrend" : "▼ Abwärtstrend"}</span></div>
-    <div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Ø ${KURZ} liegt ${zahl(a.abstand, 1)} % ${a.auf ? "über" : "unter"} Ø ${LANG}. ${a.auf ? "Ein Verkaufssignal kommt, wenn die gelbe Linie unter die violette fällt." : "Ein Kaufsignal kommt, wenn die gelbe Linie über die violette steigt."}</div>
+    <div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Ø ${KURZ} liegt ${zahl(a.abstand, 1)} % ${a.auf ? "über" : "unter"} Ø ${LANG}. ${istShort() ? (a.auf ? "Ein Short-Signal kommt, wenn die gelbe Linie unter die violette fällt." : "Eingedeckt wird, wenn die gelbe Linie über die violette steigt.") : a.auf ? "Ein Verkaufssignal kommt, wenn die gelbe Linie unter die violette fällt." : "Ein Kaufsignal kommt, wenn die gelbe Linie über die violette steigt."}</div>
   </div>
-  <div class="abschnitt" style="padding-bottom:0"><b style="font-size:16px">${istTurbo() ? "Aktionen des Turbo-Bots" : "Aktionen des Bots"}</b></div>
+  <div class="abschnitt" style="padding-bottom:0"><b style="font-size:16px">${istHaupt() ? "Aktionen des Bots" : "Aktionen · " + botName()}</b></div>
   <div class="karte liste-trenner" style="padding:4px 16px">${aktionen}</div>`;
 }
 
@@ -1019,7 +1056,7 @@ function signaleSeite() {
     const nah = a.noetig != null && Math.abs(a.noetig) <= 3;
     let naechst, nf;
     if (a.noetig == null || Math.abs(a.noetig) > 25) { naechst = "Signal nicht in Reichweite"; nf = "#858592"; }
-    else { naechst = (a.auf ? "Verkauf unter " : "Kauf über ") + geld(a.schwelle) + " (" + vz(a.noetig) + zahl(a.noetig, 1) + " %)"; nf = nah ? GELB : "#C7C7D1"; }
+    else { naechst = (istShort() ? (a.auf ? "Short unter " : "Eindecken über ") : (a.auf ? "Verkauf unter " : "Kauf über ")) + geld(a.schwelle) + " (" + vz(a.noetig) + zahl(a.noetig, 1) + " %)"; nf = nah ? GELB : "#C7C7D1"; }
     return { a, nah, naechst, nf, sort: a.noetig == null ? 999 : Math.abs(a.noetig) };
   }).sort((p, q) => p.sort - q.sort);
   if (state.nurNah) liste = liste.filter((s) => s.nah);
@@ -1028,7 +1065,7 @@ function signaleSeite() {
     const b = Math.min(Math.abs(a.abstand) / 6 * 50, 50);
     return `<button class="zeile" onclick="oeffne('${a.t}')" style="display:block;background:#141418;border-radius:18px;padding:14px">
       <span style="display:flex;align-items:center;gap:12px">${icon(a, 38)}
-        <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">${esc(a.name)}</span><span class="klein" style="display:block;margin-top:2px">${a.drin ? "Im Markt" : "Wartet auf Kaufsignal"}</span></span>
+        <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">${esc(a.name)}</span><span class="klein" style="display:block;margin-top:2px">${a.drin ? (a.stk < 0 ? "Short" : "Im Markt") : (istShort() ? "Wartet auf Short-Signal" : "Wartet auf Kaufsignal")}</span></span>
         <span class="pill num" style="color:${farbe(a.auf ? 1 : -1)};background:${a.auf ? GRUEN_BG : ROT_BG}">${a.auf ? "▲ Aufwärts" : "▼ Abwärts"}</span></span>
       <span style="display:block;margin-top:12px;height:6px;border-radius:3px;background:#22222A;position:relative">
         <span style="position:absolute;left:50%;top:-3px;width:2px;height:12px;background:#5E5E6B;border-radius:1px"></span>
@@ -1039,7 +1076,7 @@ function signaleSeite() {
   }).join("") : `<div class="leer">Gerade ist bei keiner Aktie ein Signal nah dran.</div>`;
   return `
   <div style="padding:16px 20px 0"><h1 class="titel">Signale</h1>
-  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">Wo ${istTurbo() ? "der Turbo-Bot" : "der Bot"} als Nächstes handeln könnte. Ein Signal kommt, wenn sich Ø ${KURZ} und Ø ${LANG} ${istStunde() ? "Stunden" : "Tage"} kreuzen.</div>${botSchalter()}</div>
+  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">Wo ${istHaupt() ? "der Bot" : "der " + botName()} als Nächstes handeln könnte. Ein Signal kommt, wenn sich Ø ${KURZ} und Ø ${LANG} ${istStunde() ? "Stunden" : "Tage"} kreuzen.</div>${botSchalter()}</div>
   <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:18px 16px 0">
     <div class="kachel" style="padding:14px"><div class="klein">Aufwärtstrend</div><div class="num" style="font-size:22px;font-weight:700;margin-top:6px;color:${GRUEN}">▲ ${auf}</div></div>
     <div class="kachel" style="padding:14px"><div class="klein">Abwärtstrend</div><div class="num" style="font-size:22px;font-weight:700;margin-top:6px;color:${ROT}">▼ ${mitDaten.length - auf}</div></div>
@@ -1108,7 +1145,7 @@ function zeigeTag(key) {
     return `<button class="zeile" onclick="schliesseTag(); oeffne('${x.a.t}')" style="padding:11px 4px;border-radius:12px">
       ${icon(x.a, 38)}
       <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">${esc(x.a.name)}</span>
-      <span class="klein" style="display:block;margin-top:2px">${x.art ? `<b style="color:${x.art === "Kauf" ? BOT_KAUF : BOT_VERKAUF}">Bot: ${x.art}</b>` : "Position gehalten"}</span></span>
+      <span class="klein" style="display:block;margin-top:2px">${x.art ? `<b style="color:${ART_FARBE[x.art] || BOT_VERKAUF}">Bot: ${x.art}</b>` : "Position gehalten"}</span></span>
       <span style="text-align:right;white-space:nowrap"><span class="num" style="display:block;font-size:15px;font-weight:600;color:${farbe(x.v)}">${vz(x.v)}${betrag(x.v, 2)}</span>
       <span class="num leise" style="display:block;font-size:12px;margin-top:2px">${vz(p)}${zahl(p, 2)} %</span></span>
     </button>`;
@@ -1145,7 +1182,13 @@ function bewerteAktionen(a) {
     if (tageSpaeter < 3) { offen.push(`${art} am ${wann} bei ${geld(p)}: noch zu frisch, um ihn zu bewerten.`); return; }
     const bew = (a.kurse[j] / p - 1) * 100, txt = `${vz(bew)}${zahl(bew, 1)} %`;
     const zeit = istStunde() ? (tageSpaeter >= 10 ? "in den 10 Handelsstunden danach" : `in den ${tageSpaeter} Stunden danach`) : (tageSpaeter >= 10 ? "in den 10 Handelstagen danach" : `in den ${tageSpaeter} Tagen danach`);
-    if (art === "Kauf") {
+    if (art === "Short") {
+      if (bew < 0) richtig.push(`Guter Short am ${wann} bei ${geld(p)}: Der Kurs fiel ${zeit} um ${zahl(bew, 1)} %.`);
+      else falsch.push(`Ungünstiger Short am ${wann} bei ${geld(p)}: Der Kurs stieg ${zeit} um ${txt}.`);
+    } else if (art === "Eindecken") {
+      if (bew > 0) richtig.push(`Rechtzeitig eingedeckt am ${wann} bei ${geld(p)}: Danach stieg der Kurs um ${txt}.`);
+      else falsch.push(`Zu früh eingedeckt am ${wann} bei ${geld(p)}: Danach fiel der Kurs noch um ${zahl(bew, 1)} %.`);
+    } else if (art === "Kauf") {
       if (bew > 0) richtig.push(`Guter Einstieg am ${wann} bei ${geld(p)}: Der Kurs stieg ${zeit} um ${txt}.`);
       else falsch.push(`Ungünstiger Einstieg am ${wann} bei ${geld(p)}: Der Kurs fiel ${zeit} um ${zahl(bew, 1)} %.`);
     } else {
@@ -1171,7 +1214,7 @@ function bilanzKarte(a) {
     <div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3 style="display:flex;align-items:center">Bot-Bilanz<button class="frage" onclick="erklaere('liegenlassen')" aria-label="Was heißt Liegenlassen?">?</button></h3>
       <span class="pill" style="color:${farbe(besser)};background:${besser >= 0 ? GRUEN_BG : ROT_BG}">${besser >= 0 ? "besser als Liegenlassen" : "schlechter als Liegenlassen"}</span></div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px">
-      <div class="stat"><div class="klein" style="font-size:11px">${istTurbo() ? "Turbo-Bot" : "Bot"}</div><div class="w num" style="color:${farbe(bot)}">${vz(bot)}${betrag(bot, 2)}</div></div>
+      <div class="stat"><div class="klein" style="font-size:11px">${istHaupt() ? "Bot" : botName()}</div><div class="w num" style="color:${farbe(bot)}">${vz(bot)}${betrag(bot, 2)}</div></div>
       <div class="stat"><div class="klein" style="font-size:11px">Liegenlassen</div><div class="w num" style="color:${farbe(bh)}">${vz(bh)}${betrag(bh, 2)}</div></div>
     </div>
     <div class="klein" style="margin-top:8px;line-height:1.45">Seit ${a.startTag ? datum(a.startTag) : "dem Start"}. "Liegenlassen" heißt: am ersten Tag für ${zahl(D.start, 0) + " $"} kaufen und nichts mehr tun.</div>
@@ -1247,7 +1290,7 @@ function zeigeHinweis(titel, text) {
   t.className = "toast"; t.id = "toast";
   t.innerHTML = `<span class="icon" style="width:38px;height:38px;background:#16233A"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6BB6FF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"/></svg></span><span style="flex-grow:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600">${esc(titel)}</span><span style="display:block;font-size:12px;color:#C7C7D1;margin-top:1px">${esc(text)}</span></span>`;
   t.onclick = versteckeToast;
-  setTimeout(() => { document.body.appendChild(t); setTimeout(versteckeToast, 4200); }, 420);
+  setTimeout(() => { document.body.appendChild(t); wischbar(t); setTimeout(versteckeToast, 4200); }, 420);
 }
 
 // ---------- Wochenrückblick ----------
@@ -1271,11 +1314,11 @@ function wocheKarte() {
   <div class="karte">
     <div style="display:flex;justify-content:space-between;align-items:baseline"><h3>Deine Woche</h3><span class="klein">${kurzDatum(tageZurueck(ende, 6))} – ${kurzDatum(ende)}</span></div>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px">
-      <div class="stat"><div class="klein" style="font-size:11px">${istTurbo() ? "Turbo-Bot" : "Bot"}</div><div class="w num" style="color:${farbe(bot)}">${vz(bot)}${betrag(bot, 2)}</div></div>
+      <div class="stat"><div class="klein" style="font-size:11px">${istHaupt() ? "Bot" : botName()}</div><div class="w num" style="color:${farbe(bot)}">${vz(bot)}${betrag(bot, 2)}</div></div>
       <div class="stat"><div class="klein" style="font-size:11px">Liegenlassen</div><div class="w num" style="color:${farbe(bh)}">${vz(bh)}${betrag(bh, 2)}</div></div>
     </div>
     ${bewegung.length ? `<div class="liste-trenner" style="margin-top:8px">${zeile(bewegung[0], "Beste Aktie der Woche")}${zeile(bewegung[bewegung.length - 1], "Schwächste Aktie der Woche")}</div>` : ""}
-    <div class="klein" style="margin-top:10px;line-height:1.5">${trades.length ? `${trades.length} ${trades.length === 1 ? "Aktion" : "Aktionen"} diese Woche: ` + trades.slice(0, 4).map((e) => `<b style="color:${e.art === "Kauf" ? BOT_KAUF : BOT_VERKAUF}">${esc(e.a.name)} ${e.art === "Kauf" ? "gekauft" : "verkauft"}</b>`).join(", ") + (trades.length > 4 ? " …" : "") : "Diese Woche hat der Bot nicht gehandelt."}</div>
+    <div class="klein" style="margin-top:10px;line-height:1.5">${trades.length ? `${trades.length} ${trades.length === 1 ? "Aktion" : "Aktionen"} diese Woche: ` + trades.slice(0, 4).map((e) => `<b style="color:${ART_FARBE[e.art]}">${esc(e.a.name)} ${ART_WORT[e.art]}</b>`).join(", ") + (trades.length > 4 ? " …" : "") : "Diese Woche hat der Bot nicht gehandelt."}</div>
   </div>`;
 }
 
@@ -1298,14 +1341,16 @@ function erklaere(was) {
   const wert = D.assets.reduce((s, x) => s + x.wert, 0);
   const v = D.depot, m = v.labels.length;
   const texte = {
-    durchschnitt: [`Ø${KURZ} und Ø${LANG}`, `<b style="color:${GELB}">Ø${KURZ}</b> ist der Durchschnitt der letzten ${KURZ} ${istStunde() ? "Stunden-" : ""}Schlusskurse, <b style="color:${AKZENT}">Ø${LANG}</b> der Durchschnitt der letzten ${LANG}. Der kurze Durchschnitt reagiert schnell, der lange langsam.<br><br>Steigt die gelbe Linie über die violette, kauft ${istTurbo() ? "der Turbo-Bot" : "dein Bot"}. Fällt sie darunter, verkauft er.` + (a && a.ok ? `<br><br>Bei ${esc(a.name)} gerade: Ø${KURZ} = <b>${geld(a.k10[n - 1])}</b>, Ø${LANG} = <b>${geld(a.k30[n - 1])}</b>, also ${a.auf ? "ein Aufwärtstrend" : "ein Abwärtstrend"}.` : "")],
+    durchschnitt: [`Ø${KURZ} und Ø${LANG}`, `<b style="color:${GELB}">Ø${KURZ}</b> ist der Durchschnitt der letzten ${KURZ} ${istStunde() ? "Stunden-" : ""}Schlusskurse, <b style="color:${AKZENT}">Ø${LANG}</b> der Durchschnitt der letzten ${LANG}. Der kurze Durchschnitt reagiert schnell, der lange langsam.<br><br>Steigt die gelbe Linie über die violette, ${istShort() ? `deckt der ${botName()} ein. Fällt sie darunter, geht er short.` : `kauft ${istHaupt() ? "dein Bot" : "der " + botName()}. Fällt sie darunter, verkauft er.`}` + (a && a.ok ? `<br><br>Bei ${esc(a.name)} gerade: Ø${KURZ} = <b>${geld(a.k10[n - 1])}</b>, Ø${LANG} = <b>${geld(a.k30[n - 1])}</b>, also ${a.auf ? "ein Aufwärtstrend" : "ein Abwärtstrend"}.` : "")],
     rsi: ["RSI", `Der <b>RSI</b> (Relative-Stärke-Index) misst auf einer Skala von 0 bis 100, wie stark ein Kurs in den letzten 14 Tagen gestiegen oder gefallen ist.<br><br>Über 70 gilt eine Aktie oft als <b>überkauft</b> (schnell stark gestiegen), unter 30 als <b>überverkauft</b>.` + (a && a.rsi[n - 1] != null ? `<br><br>Bei ${esc(a.name)} liegt er gerade bei <b>${zahl(a.rsi[n - 1], 1)}</b>.` : "") + `<br><br>Dein Bot nutzt den RSI nicht zum Handeln, er dient nur zur Info.`],
     volumen: ["Volumen", `Das <b>Volumen</b> zeigt, wie viele Aktien an einem Tag gehandelt wurden. Hohes Volumen heißt: viele Käufer und Verkäufer waren aktiv, eine Kursbewegung hat also mehr Gewicht.<br><br>Grüne Balken gehören zu Tagen, an denen der Kurs gestiegen ist, rote zu Tagen, an denen er gefallen ist.` + (a ? `<br><br>Bei ${esc(a.name)} am letzten Tag: <b>${volText(a.vol[n - 1])}</b>.` : "")],
     spanne: ["Spanne", `Die <b>Spanne</b> zeigt, wie weit sich der Kurs in einer Woche oder einem Monat typischerweise bewegt. Sie wird aus den Schwankungen der letzten 60 Tage berechnet.<br><br>In etwa 2 von 3 Fällen bleibt der Kurs innerhalb dieser Spanne. Sie sagt aber <b>nichts über die Richtung</b>: ob es eher hoch oder runter geht, weiß niemand vorher.`],
-    signal: ["Wie ein Signal entsteht", istTurbo() ? `Der Turbo-Bot vergleicht nach jeder Stunde die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} liegt über Ø${LANG} und er hat noch keine Anteile.<br><b>Verkauf</b>: Ø${KURZ} liegt unter Ø${LANG} und er hat Anteile.<br><br>Anders als dein Bot steigt er also auch mitten in einen laufenden Aufwärtstrend ein.` : `Dein Bot vergleicht jeden Abend die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} steigt von unten über Ø${LANG}.<br><b>Verkauf</b>: Ø${KURZ} fällt von oben unter Ø${LANG}.<br><br>Er handelt nur am Tag der Kreuzung, nicht mitten in einem laufenden Trend.` + (a && a.ok && a.noetig != null && Math.abs(a.noetig) <= 25 ? `<br><br>Bei ${esc(a.name)} käme das nächste Signal bei einem Schlusskurs ${a.auf ? "unter" : "über"} <b>${geld(a.schwelle)}</b>.` : "")],
+    signal: ["Wie ein Signal entsteht", istShort() ? `Der ${botName()} vergleicht ${istStunde() ? "nach jeder Stunde" : "jeden Abend"} die beiden Durchschnitte:<br><br><b style="color:${SHORT_FARBE}">Short</b>: Ø${KURZ} liegt unter Ø${LANG} und er ist noch nicht short.<br><b>Eindecken</b>: Ø${KURZ} liegt über Ø${LANG} und er ist short.<br><br>Short heißt: Er verkauft geliehene Aktien und kauft sie später zurück. Fällt der Kurs dazwischen, verdient er.` : istTurbo() ? `Der Turbo-Bot vergleicht nach jeder Stunde die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} liegt über Ø${LANG} und er hat noch keine Anteile.<br><b>Verkauf</b>: Ø${KURZ} liegt unter Ø${LANG} und er hat Anteile.<br><br>Anders als dein Bot steigt er also auch mitten in einen laufenden Aufwärtstrend ein.` : `Dein Bot vergleicht jeden Abend die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} steigt von unten über Ø${LANG}.<br><b>Verkauf</b>: Ø${KURZ} fällt von oben unter Ø${LANG}.<br><br>Er handelt nur am Tag der Kreuzung, nicht mitten in einem laufenden Trend.` + (a && a.ok && a.noetig != null && Math.abs(a.noetig) <= 25 ? `<br><br>Bei ${esc(a.name)} käme das nächste Signal bei einem Schlusskurs ${a.auf ? "unter" : "über"} <b>${geld(a.schwelle)}</b>.` : "")],
     treffer: ["Trefferquote", `Die <b>Trefferquote</b> ist der Anteil der abgeschlossenen Runden (Kauf und Verkauf), die mit Gewinn endeten.` + (RUNDEN.length ? `<br><br>Bei dir: <b>${RUNDEN.filter((r) => r.proz > 0).length} von ${RUNDEN.length}</b> Runden im Plus.` : "") + `<br><br>Wichtig: Auch eine niedrige Trefferquote kann Gewinn bringen, wenn die Gewinne größer sind als die Verluste. Das siehst du in der Bot-Statistik unter Aktivität.`],
     liegenlassen: ["Liegenlassen (Buy-and-Hold)", `<b>Liegenlassen</b> heißt: am ersten Tag kaufen und dann einfach halten, ohne zu handeln.<br><br>Das ist der wichtigste Maßstab für jeden Bot. Nur wenn der Bot <b>mehr</b> schafft als Liegenlassen, lohnt sich das ganze Kaufen und Verkaufen. Sonst wäre einfaches Halten besser und günstiger.` + (m ? `<br><br>Dein Depot gerade: Bot <b>${geldW(v.bot[m - 1])}</b>, Liegenlassen <b>${geldW(v.bh[m - 1])}</b>.` : "")],
     turbo: ["Turbo-Bot", `Der <b style="color:${TURBO_FARBE}">Turbo-Bot</b> ist ein zweiter Bot mit eigenem Spielgeld. Er handelt nach schnelleren Regeln:<br><br>• Er nutzt <b>Stundenkerzen</b> statt Tageskerzen und entscheidet nach jeder abgeschlossenen Stunde.<br>• Er vergleicht <b>Ø5 und Ø20</b>, also die letzten 5 und 20 Stunden.<br>• Er ist <b>im Markt, solange Ø5 über Ø20 liegt</b>, und steigt auch in laufende Trends ein.<br><br>Dafür handelt er viel öfter, zahlt mehr Gebühren und fällt leichter auf kurze Zacken rein. Ob sich das lohnt, zeigt dir das Duell.`],
+    short: ["Short-Bot", `Der <b style="color:${SHORT_FARBE}">Short-Bot</b> setzt auf <b>fallende</b> Kurse. Er nutzt dieselben Durchschnitte wie dein Bot (<b>Ø10 und Ø30 Tage</b>), nur andersherum:<br><br>• Liegt Ø10 unter Ø30, geht er <b>short</b>: Er verkauft geliehene Aktien.<br>• Steigt Ø10 wieder über Ø30, <b>deckt er ein</b>: Er kauft sie zurück.<br><br>Fällt der Kurs in der Zwischenzeit, macht er Gewinn. Steigt er, macht er Verlust. Bei echtem Geld ginge das nur über spezielle Produkte wie CFDs, hier ist alles Spielgeld.`],
+    tshort: ["Turbo-Short", `Der <b style="color:${TSHORT_FARBE}">Turbo-Short</b> ist das Gegenstück zum Turbo-Bot. Er setzt auf <b>fallende</b> Kurse und nutzt <b>Stundenkerzen mit Ø5 und Ø20</b>:<br><br>• Liegt Ø5 unter Ø20, geht er <b>short</b>.<br>• Steigt Ø5 wieder über Ø20, <b>deckt er ein</b>.<br><br>Er entscheidet nach jeder fertigen Stunde und handelt deshalb sehr oft.`],
     liga: ["Bot-Liga", `In der <b>Bot-Liga</b> treten mehrere Bots mit demselben Spielgeld gegeneinander an.<br><br><b>Echte Bots</b> (Dein Bot, Turbo-Bot) handeln wirklich jeden Tag mit, ihre Ergebnisse sind genau die aus deinem Depot.<br><b>Simulationen</b> zeigen, wie Bots mit anderen Regeln gehandelt hätten, zurückgerechnet mit echten Kursen.<br><b>Liegenlassen</b> ist der Maßstab: am Start kaufen und nichts mehr tun.<br><br>Gezählt wird in Prozent seit dem eigenen Start. Tippe auf einen Bot, um alle Details zu sehen.`],
   };
   const [titel, html] = texte[was] || ["", ""];
@@ -1354,7 +1399,7 @@ let LIGA = null;
 function wertJetzt(B, a) { const z = B.assets[a.t]; return z ? z.konto + z.stk * a.preis : D.start; }
 function rechneLiga() {
   if (LIGA) return LIGA;
-  const H = BOTS.haupt, T = BOTS.turbo;
+  const H = BOTS.haupt, T = BOTS.turbo, S = BOTS.short, TS = BOTS.tshort;
   const mit = D.assets.filter((a) => a.tagOk);
   const startGeld = D.start * D.assets.length;
   const liste = [];
@@ -1365,12 +1410,14 @@ function rechneLiga() {
   const echt = (id, B, name, regel, farbe, kerzen) => {
     if (!B || !B.depot.labels.length) return;
     const assets = {};
-    D.assets.forEach((a) => { const z = B.assets[a.t] || { akt: [], stk: 0 }; assets[a.t] = { wert: wertJetzt(B, a), akt: z.akt, drin: z.stk > 0 }; });
+    D.assets.forEach((a) => { const z = B.assets[a.t] || { akt: [], stk: 0 }; assets[a.t] = { wert: wertJetzt(B, a), akt: z.akt, drin: z.stk !== 0, short: z.stk < 0 }; });
     liste.push({ id, name, regel, farbe, echt: true, kerzen, labels: B.depot.labels, reihe: B.depot.bot, start: startGeld,
-      ende: D.assets.reduce((s, a) => s + assets[a.t].wert, 0), assets, kurz: B.kurz, lang: B.lang, trend: B.trend });
+      ende: D.assets.reduce((s, a) => s + assets[a.t].wert, 0), assets, kurz: B.kurz, lang: B.lang, trend: B.trend, short: B.richtung === "short" });
   };
   echt("haupt", H, "Dein Bot", `Ø${D.kurz} / Ø${D.lang} Tage`, AKZENT, "Tageskerzen");
   echt("turbo", T, "Turbo-Bot", `Ø${T ? T.kurz : 5} / Ø${T ? T.lang : 20} Stunden`, TURBO_FARBE, "Stundenkerzen");
+  echt("short", S, "Short-Bot", `Short · Ø${S ? S.kurz : 10} / Ø${S ? S.lang : 30} Tage`, SHORT_FARBE, "Tageskerzen");
+  echt("tshort", TS, "Turbo-Short", `Short · Ø${TS ? TS.kurz : 5} / Ø${TS ? TS.lang : 20} Stunden`, TSHORT_FARBE, "Stundenkerzen");
 
   // Liegenlassen: am ersten Tag deines Bots kaufen und halten
   if (H && H.depot.labels.length) {
@@ -1422,8 +1469,8 @@ function rechneLiga() {
     D.assets.forEach((a) => {
       let kauf = null;
       b.assets[a.t].akt.forEach(([t, art, p]) => {
-        if (art === "Kauf") kauf = [t, p];
-        else if (kauf) { b.runden.push({ a, von: kauf[0], bis: t, k: kauf[1], v: p, proz: (p / kauf[1] - 1) * 100 }); kauf = null; }
+        if (istEinstieg(art)) kauf = [t, p, art];
+        else if (kauf) { b.runden.push({ a, von: kauf[0], bis: t, k: kauf[1], v: p, proz: rundenProz(kauf[2], kauf[1], p) }); kauf = null; }
       });
     });
     let spitze = b.start, tief = 0;
@@ -1432,7 +1479,7 @@ function rechneLiga() {
     b.imMarkt = Object.values(b.assets).filter((x) => x.drin).length;
     b.seit = b.labels[0] || ligaStart;
     // Liegenlassen über genau denselben Zeitraum wie dieser Bot
-    const Q = b.id === "turbo" ? T : H;
+    const Q = (b.echt && BOTS[b.id]) || H;
     if (Q) {
       b.bhLabels = Q.depot.labels; b.bhWerte = Q.depot.bh;
       b.bhJetzt = D.assets.reduce((s, a) => { const z = Q.assets[a.t]; return s + (z && z.startKurs ? D.start / z.startKurs * a.preis : D.start); }, 0);
@@ -1480,8 +1527,7 @@ function ligaChart(bots, tage, H, boxId, dick) {
 
 function botMarke(b, g) {
   const pfade = {
-    haupt: '<rect x="4" y="8" width="16" height="12" rx="3"/><path d="M12 8V4"/><circle cx="12" cy="3" r="1"/><circle cx="9" cy="14" r="1.2"/><circle cx="15" cy="14" r="1.2"/>',
-    turbo: '<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/>',
+    haupt: BOT_INFO.haupt.pfad, turbo: BOT_INFO.turbo.pfad, short: BOT_INFO.short.pfad, tshort: BOT_INFO.tshort.pfad,
     liegen: '<path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="4" y="11" width="16" height="10" rx="2"/>',
     schnell: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     langsam: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -1495,7 +1541,7 @@ function ligaSeite() {
   const medaille = ["#F5C451", "#C9CDD6", "#D08A52"];
   const karten = L.rang.map((b, i) => {
     const gv = b.ende - b.start;
-    return `<button class="karte zeile" onclick="oeffneBot('${b.id}')" style="display:flex;align-items:center;gap:12px;padding:14px;width:auto;${b.id === "haupt" ? `outline:1.5px solid ${AKZENT};` : b.id === "turbo" ? `outline:1.5px solid ${TURBO_FARBE};` : ""}">
+    return `<button class="karte zeile" onclick="oeffneBot('${b.id}')" style="display:flex;align-items:center;gap:12px;padding:14px;width:auto;${b.echt ? `outline:1.5px solid ${b.farbe};` : ""}">
       <span class="rang num" style="background:${i < 3 ? medaille[i] : "#24242C"};color:${i < 3 ? "#0B0B0E" : "#9A9AA6"}">${i + 1}</span>
       <span style="flex-grow:1;min-width:0"><span style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700"><span class="strich" style="background:${b.farbe};width:14px"></span>${esc(b.name)}${b.echt ? `<span class="pill" style="padding:2px 7px;font-size:10px;color:${GRUEN};background:${GRUEN_BG}">echt</span>` : b.liegen ? "" : `<span class="pill" style="padding:2px 7px;font-size:10px;color:#9A9AA6;background:#24242C">Simulation</span>`}</span>
       <span class="klein" style="display:block;margin-top:3px">${esc(b.regel)}${b.liegen ? "" : " · " + b.trades + (b.trades === 1 ? " Trade" : " Trades")} · seit ${kurzDatum(b.seit)}</span></span>
@@ -1514,6 +1560,12 @@ function ligaSeite() {
   <div class="leise" style="font-size:12px;padding:12px 20px 0;line-height:1.5">Prozent seit dem eigenen Start jedes Bots, mit ${zahl(D.start, 0) + " $"} pro Aktie und ${zahl(D.gebuehr * 100, 1)} % Gebühr. <b style="color:#C7C7D1">Echt</b> heißt: Der Bot handelt wirklich jeden Tag mit. <b style="color:#C7C7D1">Simulation</b> heißt: So hätte ein Bot mit diesen Regeln gehandelt, zurückgerechnet mit echten Kursen.</div>`;
 }
 
+function oeffneBotDepot(id) {
+  schliesseTag();
+  state.botDepot = id;
+  history.pushState({ botDepot: id }, "");
+  render(true, "detail");
+}
 function oeffneBot(id) {
   schliesseTag();
   state.ligaBot = id;
@@ -1536,22 +1588,23 @@ function botProfilSeite() {
   const regeln = b.liegen
     ? `Kauft am ersten Tag jede Aktie für ${zahl(D.start, 0) + " $"} und macht danach <b>nichts mehr</b>. Das ist der wichtigste Maßstab: Ein Bot lohnt sich nur, wenn er mehr schafft als einfaches Liegenlassen.`
     : `<b>Kerzen:</b> ${b.kerzen}, entscheidet ${stunde ? "nach jeder fertigen Stunde" : "einmal am Abend nach Börsenschluss"}.<br>
-       <b style="color:${BOT_KAUF}">Kauf:</b> ${b.trend ? `solange Ø${b.kurz} über Ø${b.lang} liegt` : `wenn Ø${b.kurz} von unten über Ø${b.lang} steigt`}.<br>
-       <b>Verkauf:</b> ${b.trend ? `sobald Ø${b.kurz} unter Ø${b.lang} fällt` : `wenn Ø${b.kurz} von oben unter Ø${b.lang} fällt`}.<br>
+       ${b.short ? `<b style="color:${SHORT_FARBE}">Short:</b> solange Ø${b.kurz} unter Ø${b.lang} liegt. Er verkauft geliehene Aktien und verdient, wenn der Kurs fällt.<br>
+       <b>Eindecken:</b> sobald Ø${b.kurz} über Ø${b.lang} steigt. Dann kauft er die Aktien zurück.<br>` : `<b style="color:${BOT_KAUF}">Kauf:</b> ${b.trend ? `solange Ø${b.kurz} über Ø${b.lang} liegt` : `wenn Ø${b.kurz} von unten über Ø${b.lang} steigt`}.<br>
+       <b>Verkauf:</b> ${b.trend ? `sobald Ø${b.kurz} unter Ø${b.lang} fällt` : `wenn Ø${b.kurz} von oben unter Ø${b.lang} fällt`}.<br>`}
        <b>Einsatz:</b> ${zahl(D.start, 0) + " $"} pro Aktie, ${zahl(D.gebuehr * 100, 1)} % Gebühr pro Kauf und Verkauf.`;
   const aktien = D.assets.map((a) => ({ a, w: b.assets[a.t] })).filter((x) => x.w).sort((p, q) => q.w.wert - p.w.wert).map(({ a, w }) => {
     const g = w.wert - D.start, p = g / D.start * 100;
     const breiteBalken = Math.min(Math.abs(p) / 20 * 50, 50);
-    const klickbar = b.id === "haupt" || b.id === "turbo";
+    const klickbar = b.echt;
     return `<${klickbar ? `button class="zeile" onclick="oeffne('${a.t}', '${b.id}')"` : `div class="zeile"`} style="padding:9px 8px">
       ${icon(a, 34)}
       <span style="flex-grow:1;min-width:0"><span style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</span><span class="num" style="font-size:14px;font-weight:600;color:${farbe(g)};white-space:nowrap">${vz(p)}${zahl(p, 2)} %</span></span>
       <span style="display:block;margin-top:6px;height:5px;border-radius:3px;background:#22222A;position:relative"><span style="position:absolute;left:50%;top:-2px;width:1px;height:9px;background:#5E5E6B"></span><span style="position:absolute;top:0;height:5px;border-radius:3px;left:${g >= 0 ? 50 : 50 - breiteBalken}%;width:${breiteBalken}%;background:${farbe(g)}"></span></span>
-      <span class="klein" style="display:block;margin-top:4px">${w.drin ? "Im Markt" : "Bargeld"} · ${w.akt.length} ${w.akt.length === 1 ? "Trade" : "Trades"}</span></span>
+      <span class="klein" style="display:block;margin-top:4px">${w.drin ? (w.short ? "Short" : "Im Markt") : "Bargeld"} · ${w.akt.length} ${w.akt.length === 1 ? "Trade" : "Trades"}</span></span>
     </${klickbar ? "button" : "div"}>`;
   }).join("");
   const letzte = D.assets.flatMap((a) => (b.assets[a.t] ? b.assets[a.t].akt : []).map(([t, art, p]) => ({ a, t, art, p }))).sort((x, y) => (x.t < y.t ? 1 : -1)).slice(0, 8);
-  const tradeListe = letzte.length ? letzte.map((e) => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0">${icon(e.a, 30)}<span style="flex-grow:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600">${esc(e.a.name)}</span><span class="klein num">${datum(e.t)} · ${geld(e.p)}</span></span><span class="pill" style="color:${e.art === "Kauf" ? BOT_KAUF : BOT_VERKAUF};background:${e.art === "Kauf" ? "rgba(107,182,255,0.13)" : "rgba(244,244,246,0.10)"}">${e.art}</span></div>`).join("") : `<div class="klein" style="padding:10px 0">Noch keine Trades.</div>`;
+  const tradeListe = letzte.length ? letzte.map((e) => `<div style="display:flex;align-items:center;gap:10px;padding:10px 0">${icon(e.a, 30)}<span style="flex-grow:1;min-width:0"><span style="display:block;font-size:14px;font-weight:600">${esc(e.a.name)}</span><span class="klein num">${datum(e.t)} · ${geld(e.p)}</span></span><span class="pill" style="color:${ART_FARBE[e.art]};background:${ART_BG[e.art]}">${e.art}</span></div>`).join("") : `<div class="klein" style="padding:10px 0">Noch keine Trades.</div>`;
   const besser = liegen ? b.proz - liegen.proz : null;
   return `
   <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px 0">
@@ -1583,16 +1636,16 @@ function botProfilSeite() {
     </div>
   </div>
   <div class="karte"><h3>So handelt ${b.liegen ? "Liegenlassen" : "dieser Bot"}</h3><div style="font-size:14px;line-height:1.6;color:#D4D4DC;margin-top:10px">${regeln}</div></div>
-  <div class="abschnitt"><b>Ergebnis je Aktie</b>${b.id === "haupt" || b.id === "turbo" ? `<span class="klein">Tippen für Chart</span>` : ""}</div>
+  <div class="abschnitt"><b>Ergebnis je Aktie</b>${b.echt ? `<span class="klein">Tippen für Chart</span>` : ""}</div>
   <div style="padding:0 8px">${aktien}</div>
   ${b.liegen ? "" : `<div class="karte"><h3>Letzte Trades</h3><div class="liste-trenner" style="margin-top:4px">${tradeListe}</div></div>`}
-  ${b.id === "haupt" || b.id === "turbo" ? `<button onclick="tab('${b.id === "haupt" ? "depot" : "turbo"}')" class="karte" style="display:block;width:calc(100% - 32px);text-align:center;font-weight:700;font-size:15px;color:${b.farbe};padding:15px">Zum Depot ${b.id === "haupt" ? "deines Bots" : "des Turbo-Bots"}</button>` : ""}`;
+  ${b.echt ? `<button onclick="zumDepot('${b.id}')" class="karte" style="display:block;width:calc(100% - 32px);text-align:center;font-weight:700;font-size:15px;color:${b.farbe};padding:15px">${b.id === "haupt" ? "Zum Depot deines Bots" : "Zum Depot · " + esc(b.name)}<span class="leise" style="display:block;font-size:11px;font-weight:500;margin-top:3px">im Tab ${b.id === "turbo" || b.id === "tshort" ? "Turbo" : "Depot"}, oben links umschaltbar</span></button>` : ""}`;
 }
 
 // ---------- Turbo-Bot ----------
 // Duell: beide Bots ab dem Start des Turbo-Bots in Prozent
-function duellDaten() {
-  const T = BOTS.turbo, H = BOTS.haupt;
+function duellDaten(id) {
+  const T = BOTS[id || "turbo"], H = BOTS.haupt;
   if (!T || !T.depot.labels.length) return null;
   const startGeld = D.start * D.assets.length;
   const labels = T.depot.labels, t0 = labels[0];
@@ -1612,8 +1665,9 @@ function duellDaten() {
     vorsprung: (turboJetzt - startGeld) - (deinerJetzt - basis),
   };
 }
-function duellKarte() {
-  const d = duellDaten();
+function duellKarte(id) {
+  id = id || "turbo";
+  const d = duellDaten(id), F = BOT_INFO[id].farbe, N = BOT_INFO[id].kurz;
   if (!d) return "";
   const turboVorn = d.vorsprung > 0, gleich = Math.abs(d.vorsprung) < 0.01;
   const anteil = Math.max(8, Math.min(92, 50 + (d.turboProz - d.deinerProz) * 6));
@@ -1632,12 +1686,12 @@ function duellKarte() {
     mini = `<div class="chartbox" id="duellchart" style="margin-top:14px"><svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Duell im Verlauf">
       <line x1="0" x2="${W}" y1="${y(0)}" y2="${y(0)}" stroke="#2A2A33" stroke-dasharray="2 4"/>
       <path class="zeichnen" pathLength="1" d="${pfad(d.dp, x, y)}" fill="none" stroke="${AKZENT}" stroke-width="1.8" stroke-linejoin="round"/>
-      <path class="zeichnen" pathLength="1" d="${pfad(d.tp, x, y)}" fill="none" stroke="${TURBO_FARBE}" stroke-width="2.2" stroke-linejoin="round"/>
+      <path class="zeichnen" pathLength="1" d="${pfad(d.tp, x, y)}" fill="none" stroke="${F}" stroke-width="2.2" stroke-linejoin="round"/>
       <line class="kreuz" x1="0" x2="0" y1="0" y2="${H}" stroke="${TEXT}" stroke-dasharray="3 3" opacity="0"/>
     </svg><div class="tip"></div></div>`;
     setTimeout(() => {
       const box = document.getElementById("duellchart");
-      if (box) tippbar(box, n, x, (i) => `<b>${datum(d.labels[i])}</b><br><span class="fleck" style="background:${TURBO_FARBE}"></span>Turbo: ${vz(d.tp[i])}${zahl(d.tp[i], 2)} %<br><span class="fleck" style="background:${AKZENT}"></span>Dein Bot: ${vz(d.dp[i])}${zahl(d.dp[i], 2)} %`);
+      if (box) tippbar(box, n, x, (i) => `<b>${datum(d.labels[i])}</b><br><span class="fleck" style="background:${F}"></span>${N}: ${vz(d.tp[i])}${zahl(d.tp[i], 2)} %<br><span class="fleck" style="background:${AKZENT}"></span>Dein Bot: ${vz(d.dp[i])}${zahl(d.dp[i], 2)} %`);
     });
   }
   return `
@@ -1646,17 +1700,17 @@ function duellKarte() {
     <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-top:12px">
       ${seite("Dein Bot", AKZENT, d.deinerJetzt, d.deinerProz, false, !gleich && !turboVorn)}
       <span class="leise" style="font-size:12px;font-weight:700">VS</span>
-      ${seite("Turbo", TURBO_FARBE, d.turboJetzt, d.turboProz, true, !gleich && turboVorn)}
+      ${seite(N, F, d.turboJetzt, d.turboProz, true, !gleich && turboVorn)}
     </div>
     <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:14px;background:#24242C">
-      <div style="width:${100 - anteil}%;background:${AKZENT}"></div><div style="width:2px;background:#0B0B0E"></div><div style="flex-grow:1;background:${TURBO_FARBE}"></div>
+      <div style="width:${100 - anteil}%;background:${AKZENT}"></div><div style="width:2px;background:#0B0B0E"></div><div style="flex-grow:1;background:${F}"></div>
     </div>
-    <div style="font-size:14px;margin-top:12px;line-height:1.45">${gleich ? "Beide liegen gleichauf." : `<b style="color:${turboVorn ? TURBO_FARBE : AKZENT}">${turboVorn ? "Turbo" : "Dein Bot"}</b> liegt <b class="num">${betrag(Math.abs(d.vorsprung), 2)}</b> vorne.`}</div>
+    <div style="font-size:14px;margin-top:12px;line-height:1.45">${gleich ? "Beide liegen gleichauf." : `<b style="color:${turboVorn ? F : AKZENT}">${turboVorn ? N : "Dein Bot"}</b> liegt <b class="num">${betrag(Math.abs(d.vorsprung), 2)}</b> vorne.`}</div>
     ${mini}
   </div>`;
 }
 function turboSeite() {
-  if (BOTS.turbo) return depotSeite();
+  if (BOTS.turbo || BOTS.tshort) return depotSeite();
   return `
   <div style="display:flex;align-items:center;gap:10px;padding:12px 20px 0">
     <span class="icon" style="width:34px;height:34px;background:#2E2117"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TURBO_FARBE}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/></svg></span>
@@ -1669,15 +1723,49 @@ function turboSeite() {
 }
 // Umschalter für Signale und Aktivität
 function botSchalter() {
-  if (!BOTS.turbo) return "";
-  return `<div class="segment" style="display:inline-flex;margin-top:12px">${[["haupt", "Dein Bot", AKZENT], ["turbo", "Turbo", TURBO_FARBE]].map(([id, l, f]) =>
-    `<button class="${state.sicht === id ? "aktiv" : ""}" onclick="setze({sicht:'${id}'})" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px"><span class="punkt" style="background:${f}"></span>${l}</button>`).join("")}</div>`;
+  const da = BOT_IDS.filter((id) => BOTS[id]);
+  if (da.length < 2) return "";
+  return `<div class="scrollx" style="margin-top:12px;gap:6px">${da.map((id) =>
+    `<button class="chip ${state.sicht === id ? "aktiv" : ""}" onclick="setze({sicht:'${id}'})" style="display:inline-flex;align-items:center;gap:6px;padding:7px 12px;flex-shrink:0;${state.sicht === id ? "" : "background:#141418"}"><span class="punkt" style="background:${BOT_INFO[id].farbe}"></span>${BOT_INFO[id].kurz}</button>`).join("")}</div>`;
+}
+// Bot-Wahl oben links: im Depot "Dein Bot" oder "Short-Bot", im Turbo-Tab "Turbo" oder "Turbo-Short"
+function liesWahl(k, std) { try { const v = localStorage.getItem(k); return v && BOTS[v] ? v : std; } catch (e) { return std; } }
+function wahlPaar() { return state.tab === "turbo" ? ["turbo", "tshort"] : ["haupt", "short"]; }
+function zeigeBotWahl() {
+  const paar = wahlPaar().filter((id) => BOTS[id]);
+  const gewaehlt = state.tab === "turbo" ? state.turboWahl : state.depotWahl;
+  const zeilen = paar.map((id) => {
+    const B = BOTS[id], I = BOT_INFO[id];
+    const wert = D.assets.reduce((s, a) => s + wertJetzt(B, a), 0), gv = wert - D.start * D.assets.length, p = gv / (D.start * D.assets.length) * 100;
+    return `<button class="zeile" onclick="waehleBot('${id}')" style="padding:12px 6px;border-radius:14px;${id === gewaehlt ? "background:#1C1C22" : ""}">
+      <span class="icon" style="width:42px;height:42px;background:${I.bg}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${I.farbe}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I.pfad}</svg></span>
+      <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:${TEXT}">${I.name}</span>
+      <span class="klein" style="display:block;margin-top:2px">${B.richtung === "short" ? "Short" : "Long"} · Ø${B.kurz} / Ø${B.lang} ${B.intervall === "1h" ? "Stunden" : "Tage"}</span></span>
+      <span style="text-align:right;white-space:nowrap"><span class="num" style="display:block;font-size:14px;font-weight:600;color:${TEXT}">${betrag(wert, 2)}</span>
+      <span class="num" style="display:block;font-size:12px;font-weight:600;margin-top:2px;color:${farbe(gv)}">${vz(p)}${zahl(p, 2)} %</span></span>
+      <span style="width:22px;flex-shrink:0;display:flex;justify-content:center">${id === gewaehlt ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${I.farbe}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>` : ""}</span>
+    </button>`;
+  }).join("");
+  zeigeInfo("Bot wählen", `<div style="margin:-4px -6px 0">${zeilen}</div><div class="leise" style="font-size:12px;margin-top:10px;line-height:1.5">Long-Bots verdienen, wenn Kurse steigen. Short-Bots verdienen, wenn Kurse fallen.</div>`);
+}
+function waehleBot(id) {
+  schliesseTag();
+  if (id === "turbo" || id === "tshort") { state.turboWahl = id; try { localStorage.setItem("bot_wahl_turbo", id); } catch (e) {} }
+  else { state.depotWahl = id; try { localStorage.setItem("bot_wahl_depot", id); } catch (e) {} }
+  render(true, "tab");
+}
+function zumDepot(id) {
+  if (id === "turbo" || id === "tshort") { state.turboWahl = id; tab("turbo"); }
+  else { state.depotWahl = id; tab("depot"); }
+  try { localStorage.setItem(id === "turbo" || id === "tshort" ? "bot_wahl_turbo" : "bot_wahl_depot", id); } catch (e) {}
 }
 function botFuer() {
   if (state.mitteilungen) return "haupt";
-  if (state.ligaBot && !state.detail) return state.ligaBot === "turbo" ? "turbo" : "haupt";
+  if (state.botDepot && !state.detail) return state.botDepot;
+  if (state.ligaBot && !state.detail) return BOTS[state.ligaBot] ? state.ligaBot : "haupt";
   if (state.detail) return state.detailBot;
-  if (state.tab === "turbo") return "turbo";
+  if (state.tab === "turbo") return BOTS[state.turboWahl] ? state.turboWahl : "turbo";
+  if (state.tab === "depot") return BOTS[state.depotWahl] ? state.depotWahl : "haupt";
   if (state.tab === "signale" || state.tab === "aktivitaet") return state.sicht;
   return "haupt";
 }
@@ -1743,7 +1831,7 @@ function statistikKarte() {
 
 // ---------- Mitteilungen ----------
 const EREIGNISSE = [];
-["haupt", "turbo"].forEach((bot) => {
+BOT_IDS.forEach((bot) => {
   const B = BOTS[bot];
   if (!B) return;
   D.assets.forEach((a) => {
@@ -1752,8 +1840,8 @@ const EREIGNISSE = [];
     let kauf = null;
     z.akt.forEach(([t, art, p, st]) => {
       let extra = null;
-      if (art === "Kauf") kauf = p;
-      else if (kauf) { extra = (p / kauf - 1) * 100; kauf = null; }
+      if (istEinstieg(art)) kauf = [p, art];
+      else if (kauf) { extra = rundenProz(kauf[1], kauf[0], p); kauf = null; }
       EREIGNISSE.push({ a, t, art, p, st, extra, bot });
     });
   });
@@ -1770,7 +1858,7 @@ const NEU = EREIGNISSE.slice(0, ungelesen());
 function ereignisText(e) {
   const menge = e.a.einheit === "BTC" ? (e.st || 0).toLocaleString("de-DE", { maximumFractionDigits: 6 }) + " BTC" : zahl(e.st || 0, 2) + " Stk";
   return {
-    titel: `${e.bot === "turbo" ? "Turbo: " : ""}${e.a.name} ${e.art === "Kauf" ? "gekauft" : "verkauft"}`,
+    titel: `${e.bot !== "haupt" ? BOT_INFO[e.bot].kurz + ": " : ""}${e.a.name} ${ART_WORT[e.art]}`,
     text: `${menge} zu ${geld(e.p)}` + (e.t.length > 10 ? ` · ${e.t.slice(11, 16)} Uhr` : "") + (e.extra != null ? ` · Runde ${vz(e.extra)}${zahl(e.extra, 1)} %` : ""),
   };
 }
@@ -1784,7 +1872,7 @@ function mitteilungenSeite() {
       return `<button class="zeile" onclick="oeffne('${e.a.t}', '${e.bot}')" style="padding:12px 0;border-radius:0">
         ${icon(e.a, 36)}
         <span style="flex-grow:1;min-width:0"><span style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600">${e.neu ? `<span class="punkt" style="background:${BOT_KAUF};width:8px;height:8px;border-radius:4px" aria-label="neu"></span>` : ""}${esc(tx.titel)}</span><span class="klein num" style="display:block;margin-top:2px">${tx.text}</span></span>
-        <span class="pill" style="color:${e.art === "Kauf" ? BOT_KAUF : BOT_VERKAUF};background:${e.art === "Kauf" ? "rgba(107,182,255,0.13)" : "rgba(244,244,246,0.10)"}">${e.art}</span>
+        <span class="pill" style="color:${ART_FARBE[e.art]};background:${ART_BG[e.art]}">${e.art}</span>
       </button>`;
     }).join("")}</div>`).join("") : `<div class="leer">Noch keine Mitteilungen. Sobald der Bot kauft oder verkauft, steht es hier.</div>`;
   return `
@@ -1792,7 +1880,7 @@ function mitteilungenSeite() {
     <button class="rund" onclick="zurueck()" aria-label="Zurück"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   </div>
   <div style="padding:10px 20px 0"><h1 class="titel">Mitteilungen</h1>
-  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">${BOTS.turbo ? "Alle Käufe und Verkäufe von deinem Bot und dem Turbo-Bot." : "Alle Käufe und Verkäufe des Bots."}</div></div>
+  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">${BOT_IDS.filter((id) => BOTS[id]).length > 1 ? "Alle Trades von allen deinen Bots." : "Alle Käufe und Verkäufe des Bots."}</div></div>
   <div class="karte">
     <h3>Push-Nachrichten aufs iPhone</h3>
     ${D.modus !== "cloud" ? `<div class="klein" style="font-size:13px;margin-top:8px;line-height:1.5">Kommen mit dem Umzug in die Cloud. Bis dahin siehst du neue Käufe und Verkäufe hier und an der Zahl an der Glocke.</div>` : `<div class="klein" style="font-size:13px;margin-top:8px;line-height:1.5">Kommen über die App <b style="color:${TEXT}">ntfy</b>: Sobald einer deiner Bots kauft oder verkauft, bekommst du eine Nachricht. Klappt ein Lauf nicht, zum Beispiel weil keine Kurse kamen, meldet er sich auch.</div>`}
@@ -1816,7 +1904,41 @@ function zeigeToast() {
   t.innerHTML = `${icon(NEU[0].a, 38)}<span style="flex-grow:1;min-width:0"><span style="display:block;font-size:11px;color:#9A9AA6;font-weight:600;letter-spacing:.3px">BOT · NEU</span><span style="display:block;font-size:14px;font-weight:600;margin-top:1px">${esc(tx.titel)}</span><span class="num" style="display:block;font-size:12px;color:#C7C7D1;margin-top:1px">${tx.text}${NEU.length > 1 ? " · +" + (NEU.length - 1) + " weitere" : ""}</span></span>`;
   t.onclick = oeffneMitteilungen;
   document.body.appendChild(t);
+  wischbar(t);
   setTimeout(versteckeToast, 5200);
+}
+// Nachricht nach oben wischen = sofort weg (der Timer bleibt trotzdem als Sicherheit)
+function wischbar(t) {
+  let y0 = null, dy = 0, gewischt = false;
+  t.style.touchAction = "none";
+  t.addEventListener("pointerdown", (e) => {
+    y0 = e.clientY; dy = 0; gewischt = false;
+    t.style.animation = "none"; t.style.transition = "none";
+    try { t.setPointerCapture(e.pointerId); } catch (f) {}
+  });
+  t.addEventListener("pointermove", (e) => {
+    if (y0 == null) return;
+    dy = Math.min(0, e.clientY - y0);
+    if (dy < -6) gewischt = true;
+    t.style.transform = `translate(-50%, ${dy}px)`;
+    t.style.opacity = String(Math.max(0.3, 1 + dy / 160));
+  });
+  const ende = () => {
+    if (y0 == null) return;
+    y0 = null;
+    if (dy < -35) {
+      t.style.transition = "transform .22s ease-in, opacity .22s";
+      t.style.transform = "translate(-50%, -160%)"; t.style.opacity = "0";
+      t.id = ""; setTimeout(() => t.remove(), 240);
+    } else {
+      t.style.transition = "transform .2s ease-out, opacity .2s";
+      t.style.transform = "translate(-50%, 0)"; t.style.opacity = "1";
+    }
+  };
+  t.addEventListener("pointerup", ende);
+  t.addEventListener("pointercancel", ende);
+  // Nach einem Wisch nicht gleichzeitig die Mitteilungen öffnen
+  t.addEventListener("click", (e) => { if (gewischt) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 }
 function versteckeToast() {
   const t = document.getElementById("toast");
@@ -1848,6 +1970,7 @@ function render(nachOben, anim) {
   if (aktiviere(botFuer())) state.monat = Math.max(MONATE.length - 1, 0);
   let html;
   if (state.mitteilungen) html = mitteilungenSeite();
+  else if (state.botDepot && !state.detail) html = depotSeite();
   else if (state.ligaBot && !state.detail) html = botProfilSeite();
   else if (state.detail) html = detailSeite();
   else if (state.tab === "signale") html = signaleSeite();
@@ -1869,21 +1992,22 @@ function setze(neu) { Object.assign(state, neu); render(false); }
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { schliesseTag(); schliesseVollbild(); } });
 function tab(id) {
   schliesseVollbild(); schliesseTag();
-  if (history.state && (history.state.detail || history.state.mitteilungen || history.state.ligaBot)) history.replaceState(null, "");
-  state.ligaBot = null;
+  if (history.state && (history.state.detail || history.state.mitteilungen || history.state.ligaBot || history.state.botDepot)) history.replaceState(null, "");
+  state.ligaBot = null; state.botDepot = null;
   state.tab = id; state.detail = null; state.mitteilungen = false; render(true, "tab");
 }
 function oeffne(t, bot) { schliesseTag(); state.detailBot = bot || botFuer(); state.detail = t; state.mitteilungen = false; history.pushState({ detail: t, bot: state.detailBot }, ""); render(true, "detail"); }
 function wechsle(t) { state.detail = t; history.replaceState({ detail: t, bot: state.detailBot }, ""); render(false); }
 function zurueck() {
-  if (history.state && (history.state.detail || history.state.mitteilungen || history.state.ligaBot)) history.back();
+  if (history.state && (history.state.detail || history.state.mitteilungen || history.state.ligaBot || history.state.botDepot)) history.back();
   else { state.detail = null; state.mitteilungen = false; render(true, "tab"); }
 }
 window.addEventListener("popstate", (e) => {
   schliesseVollbild();
   state.detail = (e.state && e.state.detail) || null;
   if (e.state && e.state.bot) state.detailBot = e.state.bot;
-  state.ligaBot = (e.state && e.state.ligaBot) || (state.detail ? state.ligaBot : null);
+  state.ligaBot = (e.state && e.state.ligaBot) || (state.detail || (e.state && e.state.botDepot) ? state.ligaBot : null);
+  state.botDepot = (e.state && e.state.botDepot) || (state.detail ? state.botDepot : null);
   state.mitteilungen = !!(e.state && e.state.mitteilungen);
   render(true, "tab");
 });

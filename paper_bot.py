@@ -13,14 +13,22 @@ aktien = ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "JPM", "KO", "XOM", "GLD", "B
 start_pro_aktie = 1000
 gebuehr = 0.001
 
-# Zwei Bots mit eigenem Spielgeld:
-# - "Dein Bot":  Tageskerzen, Ø10 / Ø30, handelt nur am Tag der Kreuzung
-# - "Turbo-Bot": Stundenkerzen, Ø5 / Ø20, ist im Markt, solange Ø5 über Ø20 liegt
+# Vier Bots mit eigenem Spielgeld:
+# - "Dein Bot":    Long, Tageskerzen, Ø10 / Ø30, handelt nur am Tag der Kreuzung
+# - "Turbo-Bot":   Long, Stundenkerzen, Ø5 / Ø20, im Markt, solange Ø5 über Ø20 liegt
+# - "Short-Bot":   Short, Tageskerzen, Ø10 / Ø30, short, solange Ø10 unter Ø30 liegt
+# - "Turbo-Short": Short, Stundenkerzen, Ø5 / Ø20, short, solange Ø5 unter Ø20 liegt
+# Short heißt: Der Bot verkauft Aktien, die er sich leiht, und kauft sie später zurück.
+# Fällt der Kurs dazwischen, macht er Gewinn, steigt er, macht er Verlust.
 BOTS = [
-    {"name": "Dein Bot", "kerzen": "1d", "kurz": 10, "lang": 30, "trend": False,
+    {"name": "Dein Bot", "kerzen": "1d", "kurz": 10, "lang": 30, "trend": False, "richtung": "long",
      "zustand": "depot.json", "log": "depot_log.txt"},
-    {"name": "Turbo-Bot", "kerzen": "1h", "kurz": 5, "lang": 20, "trend": True,
+    {"name": "Turbo-Bot", "kerzen": "1h", "kurz": 5, "lang": 20, "trend": True, "richtung": "long",
      "zustand": "turbo_std.json", "log": "turbo_std_log.txt"},
+    {"name": "Short-Bot", "kerzen": "1d", "kurz": 10, "lang": 30, "trend": True, "richtung": "short",
+     "zustand": "short.json", "log": "short_log.txt"},
+    {"name": "Turbo-Short", "kerzen": "1h", "kurz": 5, "lang": 20, "trend": True, "richtung": "short",
+     "zustand": "turbo_short.json", "log": "turbo_short_log.txt"},
 ]
 
 ordner = os.path.dirname(os.path.abspath(__file__))
@@ -97,7 +105,8 @@ def bot_laufen(bot):
             depot[t] = {"konto": start_pro_aktie, "anteile": 0.0, "letzter_tag": ""}
 
     print()
-    print("=== " + bot["name"] + f" ({einheit}kerzen, Ø{kurz} / Ø{lang}) ===")
+    short = bot.get("richtung") == "short"
+    print("=== " + bot["name"] + f" ({einheit}kerzen, Ø{kurz} / Ø{lang}{', Short' if short else ''}) ===")
     neue_zeilen = []
     for t in aktien:
         r = reihe(bot["kerzen"], t)
@@ -136,7 +145,20 @@ def bot_laufen(bot):
                 verkaufen = kurz_gestern >= lang_gestern and kurz_heute < lang_heute
 
             aktion = "abwarten"
-            if kaufen and s["anteile"] == 0:
+            if short:
+                # Short: rein, wenn der Trend nach unten zeigt, raus, wenn er nach oben dreht
+                if verkaufen and s["anteile"] == 0:
+                    anzahl = math.floor(s["konto"] / (preis * (1 + gebuehr)) * 1e6) / 1e6
+                    if anzahl > 0:
+                        s["konto"] = s["konto"] + anzahl * preis * (1 - gebuehr)
+                        s["anteile"] = -anzahl
+                        aktion = "SHORT " + stueck_text(anzahl)
+                elif kaufen and s["anteile"] < 0:
+                    anzahl = -s["anteile"]
+                    s["konto"] = s["konto"] - anzahl * preis * (1 + gebuehr)
+                    s["anteile"] = 0.0
+                    aktion = "GEDECKT " + stueck_text(anzahl)
+            elif kaufen and s["anteile"] == 0:
                 # Auch Bruchstücke kaufen (wie bei vielen Neobrokern), sonst wäre Bitcoin mit 1000 nicht möglich
                 anzahl = math.floor(s["konto"] / (preis * (1 + gebuehr)) * 1e6) / 1e6
                 if anzahl > 0:
@@ -150,8 +172,9 @@ def bot_laufen(bot):
 
             s["letzter_tag"] = tage[i]
             gesamt = s["konto"] + s["anteile"] * preis
+            anteile_text = ("-" if s["anteile"] < 0 else "") + stueck_text(abs(s["anteile"]))
             zeile = (f"{tage[i]} | {t} | Kurs {preis:.2f} | {aktion} | Konto {s['konto']:.2f} | "
-                     f"Anteile {stueck_text(s['anteile'])} | Gesamtwert {gesamt:.2f}")
+                     f"Anteile {anteile_text} | Gesamtwert {gesamt:.2f}")
             neue_zeilen.append(zeile)
             if aktion != "abwarten":
                 print(">>>", zeile)

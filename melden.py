@@ -7,7 +7,8 @@ import os
 import sys
 import urllib.request
 
-LOGS = {"depot_log.txt": "Dein Bot", "turbo_std_log.txt": "Turbo"}
+LOGS = {"depot_log.txt": "Dein Bot", "turbo_std_log.txt": "Turbo", "short_log.txt": "Short", "turbo_short_log.txt": "T-Short"}
+WORTE = {"GEKAUFT": "gekauft", "VERKAUFT": "verkauft", "SHORT": "short gegangen", "GEDECKT": "eingedeckt"}
 NAMEN = {"AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia", "GOOGL": "Google", "AMZN": "Amazon",
          "JPM": "JPMorgan", "KO": "Coca-Cola", "XOM": "Exxon", "GLD": "Gold", "BTC-USD": "Bitcoin"}
 STAND = "log_stand.tmp"
@@ -63,8 +64,8 @@ elif modus == "nachher":
             art, stueck = teile[3].split()[0], teile[3].split()[1]
             name = NAMEN.get(teile[1], teile[1])
             kurs = float(teile[2].replace("Kurs", "").strip())
-            kauf = art == "GEKAUFT"
-            senden(f"{bot}: {name} {'gekauft' if kauf else 'verkauft'}",
+            kauf = art in ("GEKAUFT", "SHORT")
+            senden(f"{bot}: {name} {WORTE.get(art, art.lower())}",
                    f"{zahl(stueck)} Stück zu {zahl(f'{kurs:,.2f}')} $ ({teile[0][8:10]}.{teile[0][5:7]}."
                    + (f" {teile[0][11:16]} Uhr)" if len(teile[0]) > 10 else ")"),
                    ["chart_with_upwards_trend" if kauf else "money_with_wings"])
