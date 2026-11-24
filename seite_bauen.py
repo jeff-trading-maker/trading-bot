@@ -463,8 +463,9 @@ const BOT_KAUF = "#6BB6FF", BOT_VERKAUF = "#F4F4F6";
 const GRUEN_BG = "rgba(61,220,151,0.12)", ROT_BG = "rgba(255,122,122,0.12)", GELB_BG = "rgba(245,185,74,0.12)";
 
 const zahl = (v, d) => Math.abs(v).toLocaleString("de-DE", { minimumFractionDigits: d, maximumFractionDigits: d });
-const geld = (v) => (v < 0 ? "−" : "") + zahl(v, Math.abs(v) >= 10000 ? 0 : 2) + " $";
-// Währung: Kurse bleiben in Dollar (so handelt der Bot), Geldbeträge wahlweise in Dollar oder Euro
+// Kurse und Beträge: in der gewählten Währung (Dollar oder Euro)
+const geld = (v) => { const w = v * fx(); return (w < 0 ? "−" : "") + zahl(w, Math.abs(w) >= 10000 ? 0 : 2) + " " + WAEHRUNG; };
+// Währung: alles wahlweise in Dollar oder Euro (die Bots selbst rechnen in Dollar)
 let WAEHRUNG = "$";
 try { if (localStorage.getItem("bot_waehrung") === "€" && D.eurusd) WAEHRUNG = "€"; } catch (e) {}
 const fx = () => (WAEHRUNG === "€" && D.eurusd ? 1 / D.eurusd : 1);
@@ -775,7 +776,7 @@ function depotSeite() {
     </div>
     <div class="leise" style="font-size:12px;margin-top:8px">${text}</div>
     ${LIVE.zeit ? `<div style="margin-top:6px">${liveMarke()}</div>` : ""}
-    ${WAEHRUNG === "€" && D.eurusd ? `<div class="leise" style="font-size:11px;margin-top:4px">Umgerechnet mit 1 € = ${zahl(D.eurusd, 4)} $ · Kurse der Aktien bleiben in $</div>` : ""}
+    ${WAEHRUNG === "€" && D.eurusd ? `<div class="leise" style="font-size:11px;margin-top:4px">Alles umgerechnet mit 1 € = ${zahl(D.eurusd, 4)} $</div>` : ""}
   </div>
   ${istHaupt() ? "" : duellKarte(AKTIV)}
   <div style="margin-top:18px">${chart}</div>
@@ -855,9 +856,11 @@ function kerzenInnen(a, W, H1, H2, boxId) {
 
   let svg = "";
   const yPreis = y(alle[total - 1].c);
-  schoeneSchritte(lo, hi, 4).forEach((v) => {
+  const fw = fx();
+  schoeneSchritte(lo * fw, hi * fw, 4).forEach((vw) => {
+    const v = vw / fw;
     svg += `<line x1="${LI}" x2="${W - RA}" y1="${y(v)}" y2="${y(v)}" stroke="#1A1A20"/>`;
-    if (Math.abs(y(v) - yPreis) > 13) svg += `<text x="${W - RA + 6}" y="${y(v) + 3.5}" fill="#6E6E7A" font-size="10">${zahl(v, v >= 1000 ? 0 : 2)}</text>`;
+    if (Math.abs(y(v) - yPreis) > 13) svg += `<text x="${W - RA + 6}" y="${y(v) + 3.5}" fill="#6E6E7A" font-size="10">${zahl(vw, vw >= 1000 ? 0 : 2)}</text>`;
   });
   const datumsZahl = Math.min(4, anz);
   for (let q = 0; q < datumsZahl; q++) {
@@ -887,7 +890,7 @@ function kerzenInnen(a, W, H1, H2, boxId) {
   });
   // Linie mit dem Kaufkurs der offenen Position
   if (kaufLinie && kaufLinie >= lo && kaufLinie <= hi) {
-    const yk = y(kaufLinie), text = (a.stk < 0 ? "SHORT " : "KAUF ") + stueck(a).replace(" short", "") + "  " + zahl(kaufLinie, dez);
+    const yk = y(kaufLinie), text = (a.stk < 0 ? "SHORT " : "KAUF ") + stueck(a).replace(" short", "") + "  " + zahl(kaufLinie * fx(), dez);
     const bw = text.length * 5.6 + 12;
     const lf = a.stk < 0 ? SHORT_FARBE : "#6BB6FF";
     svg += `<line x1="${LI}" x2="${W - RA}" y1="${yk}" y2="${yk}" stroke="${lf}" stroke-dasharray="4 3" opacity="0.8"/>`;
@@ -901,7 +904,7 @@ function kerzenInnen(a, W, H1, H2, boxId) {
     const yp = y(neueste.c);
     svg += `<line x1="${LI}" x2="${W - RA}" y1="${yp}" y2="${yp}" stroke="${pf}" stroke-dasharray="2 3" opacity="0.7"/>`;
     svg += `<rect x="${W - RA + 2}" y="${yp - 9}" width="${RA - 4}" height="18" rx="5" fill="${pf}"/>`;
-    svg += `<text x="${W - RA / 2}" y="${yp + 3.5}" fill="#0B0B0E" font-size="10" font-weight="700" text-anchor="middle">${zahl(neueste.c, neueste.c >= 1000 ? 0 : 2)}</text>`;
+    svg += `<text x="${W - RA / 2}" y="${yp + 3.5}" fill="#0B0B0E" font-size="10" font-weight="700" text-anchor="middle">${zahl(neueste.c * fx(), neueste.c * fx() >= 1000 ? 0 : 2)}</text>`;
   }
 
   // Unteres Feld: Volumen oder RSI
@@ -930,7 +933,7 @@ function kerzenInnen(a, W, H1, H2, boxId) {
 
   const chart = `
   <div class="num" style="display:flex;gap:12px;flex-wrap:wrap;padding:0 20px 6px;font-size:11px;font-weight:600">
-    ${istStunde() ? `<span class="leise">1 Std</span>` : ""}${woche ? `<span class="leise">Wochenkerzen</span>` : `<span style="color:${GELB}">Ø${KURZ}: ${letzte.k10 == null ? "–" : zahl(letzte.k10, dez)}</span><span style="color:${AKZENT}">Ø${LANG}: ${letzte.k30 == null ? "–" : zahl(letzte.k30, dez)}</span><button class="frage" onclick="erklaere('durchschnitt')" aria-label="Was ist Ø${KURZ} und Ø${LANG}?">?</button>`}
+    ${istStunde() ? `<span class="leise">1 Std</span>` : ""}${woche ? `<span class="leise">Wochenkerzen</span>` : `<span style="color:${GELB}">Ø${KURZ}: ${letzte.k10 == null ? "–" : zahl(letzte.k10 * fx(), dez)}</span><span style="color:${AKZENT}">Ø${LANG}: ${letzte.k30 == null ? "–" : zahl(letzte.k30 * fx(), dez)}</span><button class="frage" onclick="erklaere('durchschnitt')" aria-label="Was ist Ø${KURZ} und Ø${LANG}?">?</button>`}
     <span style="margin-left:auto;display:inline-flex;align-items:center;gap:4px">
       ${gezoomt ? `<button onclick="zoomeKerzen('${boxId}', 0)" style="color:#B4A8FF;font-size:11px;font-weight:700;padding:2px 8px;border-radius:8px;background:#1E1A2E">Jetzt ⟲</button>` : ""}
       <button onclick="zoomeKerzen('${boxId}', 0.7)" aria-label="Reinzoomen" class="zoomknopf">+</button><button onclick="zoomeKerzen('${boxId}', 1.4)" aria-label="Rauszoomen" class="zoomknopf">−</button>
@@ -1094,9 +1097,9 @@ function detailSeite() {
   const tagO = TR.offen[tn - 1], tagH = TR.hoch[tn - 1], tagL = TR.tief[tn - 1], tagV = TR.vol[tn - 1];
   const tageswerte = `
   <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;padding:16px 16px 0">
-    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Eröffnung</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagO, dez)}</div></div>
-    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Hoch</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagH, dez)}</div></div>
-    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Tief</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagL, dez)}</div></div>
+    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Eröffnung</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagO * fx(), dez)}</div></div>
+    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Hoch</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagH * fx(), dez)}</div></div>
+    <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Tief</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${zahl(tagL * fx(), dez)}</div></div>
     <div class="kachel2" style="padding:8px 10px"><div class="klein" style="font-size:11px">Volumen</div><div class="num" style="font-size:13px;font-weight:600;margin-top:3px">${volText(tagV)}</div></div>
   </div>`;
 
@@ -1164,7 +1167,7 @@ function detailSeite() {
   <div style="padding:20px 20px 0;display:flex;align-items:center;gap:14px">
     ${icon(a, 52)}
     <div><div class="num" style="font-size:34px;font-weight:700;letter-spacing:-1px;line-height:1">${geld(a.preis)}</div>
-    <div class="num" style="font-size:14px;font-weight:600;margin-top:8px;color:${farbe(a.tag)}">${a.tag >= 0 ? "▲" : "▼"} ${vz(a.tag)}${zahl(a.tag, dez)} $ · ${vz(a.tag)}${zahl(a.tagProz, 2)} % <span class="leise" style="font-weight:500">${LIVE.quellen[a.t] ? "heute" : "am letzten Tag"}</span></div>${liveMarke(a.t) ? `<div style="margin-top:6px">${liveMarke(a.t)}</div>` : ""}</div>
+    <div class="num" style="font-size:14px;font-weight:600;margin-top:8px;color:${farbe(a.tag)}">${a.tag >= 0 ? "▲" : "▼"} ${vz(a.tag)}${betrag(a.tag, dez)} · ${vz(a.tag)}${zahl(a.tagProz, 2)} % <span class="leise" style="font-weight:500">${LIVE.quellen[a.t] ? "heute" : "am letzten Tag"}</span></div>${liveMarke(a.t) ? `<div style="margin-top:6px">${liveMarke(a.t)}</div>` : ""}</div>
   </div>
   ${tageswerte}
   <div style="margin-top:14px">${chart}</div>
@@ -1178,8 +1181,8 @@ function detailSeite() {
   ${bilanzKarte(a)}
   <div class="karte"><h3 style="display:flex;align-items:center">Ausblick<button class="frage" onclick="erklaere('spanne')" aria-label="Was bedeutet die Spanne?">?</button></h3>
     <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px">
-      <div class="kachel2"><div class="klein">Spanne 1 Woche</div><div class="num" style="font-size:14px;font-weight:600;margin-top:4px">${zahl(wo[0], dez)} – ${zahl(wo[1], dez)}</div></div>
-      <div class="kachel2"><div class="klein">Spanne 1 Monat</div><div class="num" style="font-size:14px;font-weight:600;margin-top:4px">${zahl(mo[0], dez)} – ${zahl(mo[1], dez)}</div></div>
+      <div class="kachel2"><div class="klein">Spanne 1 Woche</div><div class="num" style="font-size:14px;font-weight:600;margin-top:4px">${zahl(wo[0] * fx(), dez)} – ${zahl(wo[1] * fx(), dez)} ${WAEHRUNG}</div></div>
+      <div class="kachel2"><div class="klein">Spanne 1 Monat</div><div class="num" style="font-size:14px;font-weight:600;margin-top:4px">${zahl(mo[0] * fx(), dez)} – ${zahl(mo[1] * fx(), dez)} ${WAEHRUNG}</div></div>
     </div>
     ${kegel}
     <div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">${schwelle}</div>
