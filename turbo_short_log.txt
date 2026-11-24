@@ -8,3 +8,4 @@
 2026-11-24 15:30 | XOM | Kurs 158.41 | SHORT 6.306426 | Konto 1998.00 | Anteile -6.306426 | Gesamtwert 999.00
 2026-11-24 15:30 | GLD | Kurs 328.96 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
 2026-11-24 15:00 | BTC-USD | Kurs 60389.49 | SHORT 0.016542 | Konto 1997.96 | Anteile -0.016542 | Gesamtwert 999.00
+2026-11-24 16:00 | BTC-USD | Kurs 59647.86 | abwarten | Konto 1997.96 | Anteile -0.016542 | Gesamtwert 1011.27
