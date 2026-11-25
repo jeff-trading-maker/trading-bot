@@ -18,3 +18,12 @@
 2026-11-24 | XOM | Kurs 158.23 | abwarten | Konto 1998.00 | Anteile -6.367119 | Gesamtwert 990.53
 2026-11-24 | GLD | Kurs 325.45 | abwarten | Konto 1998.00 | Anteile -2.999822 | Gesamtwert 1021.71
 2026-11-24 | BTC-USD | Kurs 59720.79 | abwarten | Konto 1997.96 | Anteile -0.01632 | Gesamtwert 1023.32
+2026-11-25 | AAPL | Kurs 355.58 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-25 | MSFT | Kurs 489.93 | abwarten | Konto 1998.00 | Anteile -2.028428 | Gesamtwert 1004.21
+2026-11-25 | NVDA | Kurs 149.30 | abwarten | Konto 1998.00 | Anteile -6.052717 | Gesamtwert 1094.33
+2026-11-25 | GOOGL | Kurs 273.10 | abwarten | Konto 1998.00 | Anteile -3.5413 | Gesamtwert 1030.87
+2026-11-25 | AMZN | Kurs 244.43 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-25 | JPM | Kurs 316.74 | abwarten | Konto 1998.00 | Anteile -3.154806 | Gesamtwert 998.75
+2026-11-25 | KO | Kurs 97.59 | abwarten | Konto 1000.00 | Anteile 0 | Gesamtwert 1000.00
+2026-11-25 | XOM | Kurs 158.08 | abwarten | Konto 1998.00 | Anteile -6.367119 | Gesamtwert 991.49
+2026-11-25 | GLD | Kurs 327.45 | abwarten | Konto 1998.00 | Anteile -2.999822 | Gesamtwert 1015.71
