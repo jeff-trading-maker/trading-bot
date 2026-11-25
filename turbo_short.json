@@ -2,51 +2,51 @@
  "AAPL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "MSFT": {
   "konto": 1987.3021483839586,
   "anteile": -2.073735,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "NVDA": {
   "konto": 1998.0018776502798,
   "anteile": -6.972368,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "GOOGL": {
   "konto": 1998.0019519098082,
   "anteile": -3.758398,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "AMZN": {
   "konto": 1998.001931703625,
   "anteile": -3.959811,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "JPM": {
   "konto": 1997.535249542101,
   "anteile": -3.217368,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "KO": {
   "konto": 990.3531781880058,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "XOM": {
   "konto": 992.004921528721,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "GLD": {
   "konto": 1998.0019496019377,
   "anteile": -3.060993,
-  "letzter_tag": "2026-11-25 18:30"
+  "letzter_tag": "2026-11-25 19:30"
  },
  "BTC-USD": {
   "konto": 1997.963952233289,
   "anteile": -0.016542,
-  "letzter_tag": "2026-11-25 18:00"
+  "letzter_tag": "2026-11-25 19:00"
  }
 }
