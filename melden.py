@@ -8,7 +8,8 @@ import sys
 import urllib.request
 
 LOGS = {"depot_log.txt": "Dein Bot", "turbo_std_log.txt": "Turbo", "short_log.txt": "Short", "turbo_short_log.txt": "T-Short"}
-WORTE = {"GEKAUFT": "gekauft", "VERKAUFT": "verkauft", "SHORT": "short gegangen", "GEDECKT": "eingedeckt"}
+# Die neuen Bots (Stop-Loss, Long-Short, Lern-Bot) schicken bewusst keine Push-Nachrichten
+WORTE = {"GEKAUFT": "gekauft", "VERKAUFT": "verkauft", "SHORT": "short gegangen", "GEDECKT": "eingedeckt", "STOPP": "per Stop-Loss verkauft", "GESICHERT": "Gewinn gesichert"}
 NAMEN = {"AAPL": "Apple", "MSFT": "Microsoft", "NVDA": "Nvidia", "GOOGL": "Google", "AMZN": "Amazon",
          "JPM": "JPMorgan", "KO": "Coca-Cola", "XOM": "Exxon", "GLD": "Gold", "BTC-USD": "Bitcoin"}
 STAND = "log_stand.tmp"
