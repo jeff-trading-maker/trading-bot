@@ -45,9 +45,10 @@
   "letzter_tag": "2026-11-25 21:30"
  },
  "BTC-USD": {
-  "konto": 0.012589499797059034,
-  "anteile": 0.016703,
-  "letzter_tag": "2026-11-26 17:00",
-  "hoechst": 60797.3984375
+  "konto": 1008.789518623801,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-26 18:00",
+  "hoechst": 60797.3984375,
+  "gesperrt": false
  }
 }

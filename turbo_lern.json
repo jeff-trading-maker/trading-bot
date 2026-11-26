@@ -66,12 +66,38 @@
   "gesperrt": false
  },
  "BTC-USD": {
-  "konto": 0.030330179785323708,
-  "anteile": 0.016475,
-  "letzter_tag": "2026-11-26 17:00",
+  "konto": 995.0372096216798,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-26 18:00",
   "einstieg": 60635.55078125,
   "einstieg_tag": "2026-11-26 12:00",
   "einstieg_abstand": 0.56,
-  "hoechst": 60797.3984375
+  "hoechst": 60797.3984375,
+  "fehler": 1,
+  "vorsicht": 0.1,
+  "nachzug": null,
+  "lektionen": [
+   {
+    "von": "2026-11-26 12:00",
+    "bis": "2026-11-26 18:00",
+    "kauf": 60635.5508,
+    "verkauf": 60455.4102,
+    "erg": -0.5,
+    "dauer": 6,
+    "hoch": 0.27,
+    "tief": -0.3,
+    "abstand": 0.56,
+    "vorher": 0.0,
+    "nachher": 0.1,
+    "nz_vorher": null,
+    "nz_nachher": null,
+    "hebel": "vorsicht",
+    "typ": "Trend zu Ende",
+    "warum": "Der Kurs fiel nach dem Kauf um bis zu 0,3 % und kam nicht mehr \u00fcber den Kaufkurs. Als er gekauft hat, war der Aufw\u00e4rtstrend schon fast vorbei.",
+    "gelernt": "Er kauft diese Aktie jetzt erst ab 0,1 % Abstand statt 0 %. Diesen Kauf h\u00e4tte er auch mit der neuen Regel gemacht.",
+    "vermieden": false
+   }
+  ],
+  "gesperrt": false
  }
 }
