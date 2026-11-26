@@ -157,3 +157,4 @@
 2026-11-25 21:00 | BTC-USD | Kurs 60176.62 | abwarten | Konto 1007.62 | Anteile 0 | Gesamtwert 1007.62
 2026-11-25 22:00 | BTC-USD | Kurs 60161.94 | abwarten | Konto 1007.62 | Anteile 0 | Gesamtwert 1007.62
 2026-11-25 23:00 | BTC-USD | Kurs 60028.32 | abwarten | Konto 1007.62 | Anteile 0 | Gesamtwert 1007.62
+2026-11-26 01:00 | BTC-USD | Kurs 60437.30 | abwarten | Konto 1007.62 | Anteile 0 | Gesamtwert 1007.62
