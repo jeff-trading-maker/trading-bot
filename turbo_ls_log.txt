@@ -9,3 +9,5 @@
 2026-11-25 21:30 | GLD | Kurs 327.43 | SHORT 3.051036 | Konto 1998.00 | Anteile -3.051036 | Gesamtwert 999.00
 2026-11-26 12:00 | BTC-USD | Kurs 60635.55 | GEKAUFT 0.016475 | Konto 0.03 | Anteile 0.016475 | Gesamtwert 999.00
 2026-11-26 13:00 | BTC-USD | Kurs 60770.97 | abwarten | Konto 0.03 | Anteile 0.016475 | Gesamtwert 1001.23
+2026-11-26 14:00 | BTC-USD | Kurs 60797.40 | abwarten | Konto 0.03 | Anteile 0.016475 | Gesamtwert 1001.67
+2026-11-26 15:00 | BTC-USD | Kurs 60653.07 | abwarten | Konto 0.03 | Anteile 0.016475 | Gesamtwert 999.29
