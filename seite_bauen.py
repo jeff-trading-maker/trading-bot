@@ -77,7 +77,7 @@ def lies_log(datei):
     return liste
 
 
-ARTEN = {"GEKAUFT": "Kauf", "VERKAUFT": "Verkauf", "SHORT": "Short", "GEDECKT": "Eindecken"}
+ARTEN = {"GEKAUFT": "Kauf", "VERKAUFT": "Verkauf", "SHORT": "Short", "GEDECKT": "Eindecken", "STOPP": "Stop", "GESICHERT": "Gesichert"}
 
 
 def art_von(aktion):
@@ -253,9 +253,32 @@ for schluessel, datei, logname, name, k, l, iv in [("short", "short.json", "shor
             zustand = json.load(f)
         bots[schluessel] = dict(bot_daten(zustand, lies_log(os.path.join(ordner, logname))),
                                 name=name, kurz=k, lang=l, trend=True, intervall=iv, richtung="short")
+# Neue Bots: Stop-Loss, Long-Short und Lern-Bot, je einmal mit Tages- und Stundenkerzen
+NEUE_BOTS = [
+    ("stop", "stop.json", "stop_log.txt", "Stop-Loss-Bot", kurz, lang, "1d", "long", {"stop": 5}),
+    ("tstop", "turbo_stop.json", "turbo_stop_log.txt", "Turbo-Stop", turbo_kurz, turbo_lang, "1h", "long", {"stop": 2}),
+    ("ls", "ls.json", "ls_log.txt", "Long-Short-Bot", kurz, lang, "1d", "beide", {}),
+    ("tls", "turbo_ls.json", "turbo_ls_log.txt", "Turbo-L/S", turbo_kurz, turbo_lang, "1h", "beide", {}),
+    ("lern", "lern.json", "lern_log.txt", "Lern-Bot", kurz, lang, "1d", "long", {"lernen": {"schritt": 0.5, "max": 3.0, "nachzug_start": 4.0, "nachzug_schritt": 0.5, "nachzug_min": 2.0, "nachzug_max": 6.0}}),
+    ("tlern", "turbo_lern.json", "turbo_lern_log.txt", "Turbo-Lern", turbo_kurz, turbo_lang, "1h", "long", {"lernen": {"schritt": 0.1, "max": 1.0, "nachzug_start": 1.0, "nachzug_schritt": 0.2, "nachzug_min": 0.4, "nachzug_max": 2.0}}),
+]
+for schluessel, datei, logname, name, k, l, iv, richtung, extra in NEUE_BOTS:
+    bots[schluessel] = None
+    pfad = os.path.join(ordner, datei)
+    if not os.path.exists(pfad):
+        continue
+    with open(pfad, "r") as f:
+        zustand = json.load(f)
+    b = dict(bot_daten(zustand, lies_log(os.path.join(ordner, logname))),
+             name=name, kurz=k, lang=l, trend=True, intervall=iv, richtung=richtung, **extra)
+    if "lernen" in extra:
+        # Was der Lern-Bot bisher gelernt hat
+        b["gelernt"] = {t: {"vorsicht": z.get("vorsicht", 0.0), "nachzug": z.get("nachzug"), "fehler": z.get("fehler", 0), "treffer": z.get("treffer", 0),
+                            "lektionen": z.get("lektionen", [])} for t, z in zustand.items()}
+    bots[schluessel] = b
 
 # Stundenkerzen für die Charts der Stunden-Bots
-if bots["turbo"] or bots["tshort"]:
+if any(b and b.get("intervall") == "1h" for b in bots.values()):
     print("Lade Stundenkurse ...")
     try:
         std = yf.download(aktien, period="60d", interval="1h", auto_adjust=True, progress=False)
@@ -450,13 +473,28 @@ const BOT_INFO = {
   short: { name: "Short-Bot", kurz: "Short", farbe: SHORT_FARBE, bg: "#2E1726", pfad: '<path d="M3 6l7 7 4-4 7 7"/><path d="M21 10v6h-6"/>' },
   tshort: { name: "Turbo-Short", kurz: "T-Short", farbe: TSHORT_FARBE, bg: "#10282D", pfad: '<path d="M13 2L4.5 13.5H11L10 22l8.5-11.5H12z"/><path d="M19 15v6M16.5 18.5L19 21l2.5-2.5"/>' },
 };
-const BOT_IDS = ["haupt", "turbo", "short", "tshort"];
+const STOP_FARBE = "#A3E635", TSTOP_FARBE = "#FACC15", LS_FARBE = "#E879F9", TLS_FARBE = "#38BDF8", LERN_FARBE = "#FB7185", TLERN_FARBE = "#C4B5FD";
+const SCHILD = '<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/>';
+const PFEILE = '<path d="M7 4v16M4 7l3-3 3 3"/><path d="M17 20V4M14 17l3 3 3-3"/>';
+const HIRN = '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3h1V4z"/><path d="M15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3h-1V4z"/>';
+const BLITZ_KLEIN = '<path d="M20 1l-3.4 4.6H19l-.4 3.4 3.4-4.6h-2.4z"/>';
+Object.assign(BOT_INFO, {
+  stop: { name: "Stop-Loss-Bot", kurz: "Stop-Loss", farbe: STOP_FARBE, bg: "#1E2A10", pfad: SCHILD + '<path d="M9 12l2 2 4-4"/>' },
+  tstop: { name: "Turbo-Stop", kurz: "T-Stop", farbe: TSTOP_FARBE, bg: "#2C2610", pfad: SCHILD + '<path d="M13 7l-3 5h4l-1 4"/>' },
+  ls: { name: "Long-Short-Bot", kurz: "Long-Short", farbe: LS_FARBE, bg: "#2A1530", pfad: PFEILE },
+  tls: { name: "Turbo-L/S", kurz: "T-L/S", farbe: TLS_FARBE, bg: "#0F2430", pfad: PFEILE },
+  lern: { name: "Lern-Bot", kurz: "Lern-Bot", farbe: LERN_FARBE, bg: "#2E161B", pfad: HIRN },
+  tlern: { name: "Turbo-Lern", kurz: "T-Lern", farbe: TLERN_FARBE, bg: "#221D33", pfad: HIRN },
+});
+const BOT_IDS = ["haupt", "turbo", "short", "tshort", "stop", "tstop", "ls", "tls", "lern", "tlern"];
+const DEPOT_IDS = ["haupt", "short", "stop", "ls", "lern"], TURBO_IDS = ["turbo", "tshort", "tstop", "tls", "tlern"];
+const istTurboId = (id) => TURBO_IDS.includes(id);
 const istEinstieg = (art) => art === "Kauf" || art === "Short";
 const rundenProz = (art, k, v) => (art === "Short" ? (1 - v / k) * 100 : (v / k - 1) * 100);
-const ART_FARBE = { Kauf: "#6BB6FF", Verkauf: "#F4F4F6", Short: SHORT_FARBE, Eindecken: "#F4F4F6" };
-const ART_BG = { Kauf: "rgba(107,182,255,0.13)", Verkauf: "rgba(244,244,246,0.10)", Short: "rgba(244,114,182,0.14)", Eindecken: "rgba(244,244,246,0.10)" };
-const ART_WORT = { Kauf: "gekauft", Verkauf: "verkauft", Short: "short gegangen", Eindecken: "eingedeckt" };
-const ART_BUCHSTABE = { Kauf: "K", Verkauf: "V", Short: "S", Eindecken: "E" };
+const ART_FARBE = { Kauf: "#6BB6FF", Verkauf: "#F4F4F6", Short: SHORT_FARBE, Eindecken: "#F4F4F6", Stop: "#FACC15", Gesichert: "#3DDC97" };
+const ART_BG = { Kauf: "rgba(107,182,255,0.13)", Verkauf: "rgba(244,244,246,0.10)", Short: "rgba(244,114,182,0.14)", Eindecken: "rgba(244,244,246,0.10)", Stop: "rgba(250,204,21,0.14)", Gesichert: "rgba(61,220,151,0.13)" };
+const ART_WORT = { Kauf: "gekauft", Verkauf: "verkauft", Short: "short gegangen", Eindecken: "eingedeckt", Stop: "per Stop-Loss verkauft", Gesichert: "Gewinn gesichert" };
+const ART_BUCHSTABE = { Kauf: "K", Verkauf: "V", Short: "S", Eindecken: "E", Stop: "!", Gesichert: "G" };
 let AKTIV = "haupt";
 const GRUEN = "#3DDC97", ROT = "#FF7A7A", GELB = "#F5B94A", AKZENT = "#9D8CFF", TEXT = "#F4F4F6";
 const BOT_KAUF = "#6BB6FF", BOT_VERKAUF = "#F4F4F6";
@@ -614,6 +652,8 @@ function aktiviere(id) {
 const istTurbo = () => AKTIV === "turbo";
 const istHaupt = () => AKTIV === "haupt";
 const istShort = () => !!(BOTS[AKTIV] && BOTS[AKTIV].richtung === "short");
+const istBeide = () => !!(BOTS[AKTIV] && BOTS[AKTIV].richtung === "beide");
+const istLern = () => !!(BOTS[AKTIV] && BOTS[AKTIV].gelernt);
 const istStunde = () => !!(BOTS[AKTIV] && BOTS[AKTIV].intervall === "1h");
 const naechsteKerze = () => (istStunde() ? "in der nächsten Stunde" : "am nächsten Handelstag");
 const kerzenWort = () => (istStunde() ? "Stunden" : "Tage");
@@ -759,7 +799,7 @@ function depotSeite() {
       <div class="klein" style="display:flex;align-items:center;gap:5px"><span class="punkt" style="background:${GRUEN}"></span><span class="jetzt num">${jetztText()}</span></div></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
-      ${istHaupt() ? `<span class="pill" style="color:#B4A8FF;background:#1E1A2E">Spielgeld</span>` : state.botDepot ? "" : `<span class="pill" style="color:${botFarbe()};background:${BOT_INFO[AKTIV].bg}">${istShort() ? "Short" : istStunde() ? "1 Std" : ""}</span>`}
+      ${istHaupt() ? `<span class="pill" style="color:#B4A8FF;background:#1E1A2E">Spielgeld</span>` : state.botDepot ? "" : `<span class="pill" style="color:${botFarbe()};background:${BOT_INFO[AKTIV].bg}">${istShort() ? "Short" : istBeide() ? "L/S" : BOTS[AKTIV].stop ? "Stop " + BOTS[AKTIV].stop + " %" : istLern() ? "lernt" : istStunde() ? "1 Std" : ""}</span>`}
       ${D.eurusd ? `<button class="glocke" onclick="wechsleWaehrung()" aria-label="Währung wechseln, gerade ${WAEHRUNG === "€" ? "Euro" : "Dollar"}" style="font-size:16px;font-weight:700;color:${WAEHRUNG === "€" ? "#B4A8FF" : TEXT}">${WAEHRUNG}</button>` : ""}
       <button class="glocke" onclick="oeffneMitteilungen()" aria-label="Mitteilungen${ungelesen() ? ", " + ungelesen() + " ungelesen" : ""}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>
@@ -778,6 +818,7 @@ function depotSeite() {
     ${LIVE.zeit ? `<div style="margin-top:6px">${liveMarke()}</div>` : ""}
     ${WAEHRUNG === "€" && D.eurusd ? `<div class="leise" style="font-size:11px;margin-top:4px">Alles umgerechnet mit 1 € = ${zahl(D.eurusd, 4)} $</div>` : ""}
   </div>
+  ${istLern() ? lernKarte() : ""}
   ${istHaupt() ? "" : duellKarte(AKTIV)}
   <div style="margin-top:18px">${chart}</div>
   <div class="chips">${["1W", "1M", "3M", "Alle"].map((r) => `<button class="chip ${r === state.dRange ? "aktiv" : ""}" onclick="setze({dRange:'${r}'})">${r}</button>`).join("")}</div>
@@ -1110,7 +1151,7 @@ function detailSeite() {
   </div>
   <div style="display:flex;gap:18px;padding:12px 20px 0;font-size:13px;font-weight:600">
     ${[["vol", "Volumen"], ["rsi", "RSI"]].map(([id, l]) => `<button onclick="setze({unten:'${id}'})" style="padding:4px 0;color:${state.unten === id ? TEXT : "#858592"};border-bottom:2px solid ${state.unten === id ? AKZENT : "transparent"}">${l}</button>`).join("")}
-    <span class="leise" style="margin-left:auto;font-weight:500;font-size:12px;align-self:center">${(istShort() ? [["Short", "Short"], ["Eindecken", "Eindecken"]] : [["Kauf", "Bot-Kauf"], ["Verkauf", "Verkauf"]]).map(([art, l], i) => `<span style="display:inline-flex;align-items:center;gap:4px;${i ? "margin-left:8px" : ""}"><span style="width:14px;height:14px;border-radius:7px;background:${ART_FARBE[art]};color:#0B0B0E;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${ART_BUCHSTABE[art]}</span>${l}</span>`).join("")}</span>
+    <span class="leise" style="margin-left:auto;font-weight:500;font-size:12px;align-self:center">${(istShort() ? [["Short", "Short"], ["Eindecken", "Eindecken"]] : istBeide() ? [["Kauf", "Long"], ["Short", "Short"]] : BOTS[AKTIV].stop ? [["Kauf", "Kauf"], ["Stop", "Stop"]] : istLern() ? [["Kauf", "Kauf"], ["Gesichert", "Gesichert"]] : [["Kauf", "Bot-Kauf"], ["Verkauf", "Verkauf"]]).map(([art, l], i) => `<span style="display:inline-flex;align-items:center;gap:4px;${i ? "margin-left:8px" : ""}"><span style="width:14px;height:14px;border-radius:7px;background:${ART_FARBE[art]};color:#0B0B0E;font-size:8px;font-weight:800;display:inline-flex;align-items:center;justify-content:center">${ART_BUCHSTABE[art]}</span>${l}</span>`).join("")}</span>
   </div>`;
 
   // Position
@@ -1136,6 +1177,9 @@ function detailSeite() {
   else if (istShort()) schwelle = a.auf
     ? `Ein <b>Short-Signal</b> käme ${naechsteKerze()} bei einem Schlusskurs unter <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "nichts tun, weil er schon short ist" : "short gehen"}.`
     : `<b>Eindecken</b> käme ${naechsteKerze()} bei einem Schlusskurs über <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "seine Short-Position schließen" : "nichts tun, weil er gerade nicht short ist"}.`;
+  else if (istBeide()) schwelle = a.auf
+    ? `Die <b>Wende nach unten</b> käme ${naechsteKerze()} bei einem Schlusskurs unter <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann verkaufen und direkt short gehen.`
+    : `Die <b>Wende nach oben</b> käme ${naechsteKerze()} bei einem Schlusskurs über <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann eindecken und direkt kaufen.`;
   else if (a.auf) schwelle = `Ein <b>Verkaufssignal</b> käme ${naechsteKerze()} bei einem Schlusskurs unter <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "verkaufen" : "nichts tun, weil er keine Anteile hat"}.`;
   else schwelle = `Ein <b>Kaufsignal</b> käme ${naechsteKerze()} bei einem Schlusskurs über <b class="num">${geld(a.schwelle)}</b> (${vz(a.noetig)}${zahl(a.noetig, 1)} %). Der Bot würde dann ${a.drin ? "nichts tun, weil er schon Anteile hat" : "kaufen"}.`;
   const alt = a.tagReihe.kurse.slice(-40), zuk = krypto ? 30 : 20, ges = alt.length + zuk;
@@ -1191,8 +1235,9 @@ function detailSeite() {
   <div class="karte">
     <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="display:flex;align-items:center">Signal<button class="frage" onclick="erklaere('signal')" aria-label="Wie entsteht ein Signal?">?</button></h3>
     <span class="pill" style="color:${farbe(a.auf ? 1 : -1)};background:${a.auf ? GRUEN_BG : ROT_BG}">${a.auf ? "▲ Aufwärtstrend" : "▼ Abwärtstrend"}</span></div>
-    <div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Ø ${KURZ} liegt ${zahl(a.abstand, 1)} % ${a.auf ? "über" : "unter"} Ø ${LANG}. ${istShort() ? (a.auf ? "Ein Short-Signal kommt, wenn die gelbe Linie unter die violette fällt." : "Eingedeckt wird, wenn die gelbe Linie über die violette steigt.") : a.auf ? "Ein Verkaufssignal kommt, wenn die gelbe Linie unter die violette fällt." : "Ein Kaufsignal kommt, wenn die gelbe Linie über die violette steigt."}</div>
+    <div style="font-size:13px;color:#C7C7D1;line-height:1.5;margin-top:10px">Ø ${KURZ} liegt ${zahl(a.abstand, 1)} % ${a.auf ? "über" : "unter"} Ø ${LANG}. ${istShort() ? (a.auf ? "Ein Short-Signal kommt, wenn die gelbe Linie unter die violette fällt." : "Eingedeckt wird, wenn die gelbe Linie über die violette steigt.") : istBeide() ? (a.auf ? "Der Bot ist long. Fällt die gelbe Linie unter die violette, dreht er auf short." : "Der Bot ist short. Steigt die gelbe Linie über die violette, dreht er auf long.") : a.auf ? "Ein Verkaufssignal kommt, wenn die gelbe Linie unter die violette fällt." : "Ein Kaufsignal kommt, wenn die gelbe Linie über die violette steigt."}</div>
   </div>
+  ${istLern() ? fehlerKarte(a) : ""}
   <div class="abschnitt" style="padding-bottom:0"><b style="font-size:16px">${istHaupt() ? "Aktionen des Bots" : "Aktionen · " + botName()}</b></div>
   <div class="karte liste-trenner" style="padding:4px 16px">${aktionen}</div>`;
 }
@@ -1204,7 +1249,7 @@ function signaleSeite() {
     const nah = a.noetig != null && Math.abs(a.noetig) <= 3;
     let naechst, nf;
     if (a.noetig == null || Math.abs(a.noetig) > 25) { naechst = "Signal nicht in Reichweite"; nf = "#858592"; }
-    else { naechst = (istShort() ? (a.auf ? "Short unter " : "Eindecken über ") : (a.auf ? "Verkauf unter " : "Kauf über ")) + geld(a.schwelle) + " (" + vz(a.noetig) + zahl(a.noetig, 1) + " %)"; nf = nah ? GELB : "#C7C7D1"; }
+    else { naechst = (istShort() ? (a.auf ? "Short unter " : "Eindecken über ") : istBeide() ? (a.auf ? "Wende auf Short unter " : "Wende auf Long über ") : (a.auf ? "Verkauf unter " : "Kauf über ")) + geld(a.schwelle) + " (" + vz(a.noetig) + zahl(a.noetig, 1) + " %)"; nf = nah ? GELB : "#C7C7D1"; }
     return { a, nah, naechst, nf, sort: a.noetig == null ? 999 : Math.abs(a.noetig) };
   }).sort((p, q) => p.sort - q.sort);
   if (state.nurNah) liste = liste.filter((s) => s.nah);
@@ -1290,7 +1335,7 @@ function zeigeTag(key) {
   const titel = new Date(t[0], t[1] - 1, t[2]).toLocaleDateString("de-DE", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   const zeilen = bewegt.map((x) => {
     const p = x.v / D.start * 100;
-    return `<button class="zeile" onclick="schliesseTag(); oeffne('${x.a.t}')" style="padding:11px 4px;border-radius:12px">
+    return `<button class="zeile" onclick="zeigeTagPosition('${x.a.t}', '${key}')" style="padding:11px 4px;border-radius:12px">
       ${icon(x.a, 38)}
       <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:600">${esc(x.a.name)}</span>
       <span class="klein" style="display:block;margin-top:2px">${x.art ? `<b style="color:${ART_FARBE[x.art] || BOT_VERKAUF}">Bot: ${x.art}</b>` : "Position gehalten"}</span></span>
@@ -1304,12 +1349,139 @@ function zeigeTag(key) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
       <div><div class="klein" style="font-weight:600">${esc(titel)}</div>
       <div class="num" style="font-size:28px;font-weight:700;margin-top:4px;color:${farbe(summe)}">${vz(summe)}${betrag(summe, 2)}</div>
-      <div class="klein">Depot an diesem Tag</div></div>
+      <div class="klein">${istHaupt() ? "Depot" : esc(botName()) + "-Depot"} an diesem Tag · Aktie antippen für Details</div></div>
       <button class="rund" onclick="schliesseTag()" aria-label="Schließen" style="background:#1C1C22;flex-shrink:0"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     </div>
     <div class="liste-trenner" style="margin-top:14px">${zeilen || `<div class="leise" style="font-size:13px;padding:14px 0">An diesem Tag hat sich im Depot nichts bewegt.</div>`}</div>
     ${ruhig ? `<div class="leise" style="font-size:12px;margin-top:10px">${ruhig} ${ruhig === 1 ? "Aktie" : "Aktien"} ohne Veränderung, weil der Bot dort nur Bargeld hält.</div>` : ""}`;
   document.body.appendChild(hg); document.body.appendChild(sh);
+}
+// ---------- Position eines Bots an einem Kalendertag ----------
+function rundenVon(a) {
+  // Alle Positionen dieser Aktie: Einstieg und Ausstieg (Index in a.tage)
+  const runden = []; let offen = null;
+  a.akt.forEach(([tag, art, p]) => {
+    const i = a.tage.indexOf(tag);
+    if (istEinstieg(art)) offen = { e: i, eTag: tag, k: p, art, x: null };
+    else if (offen) { offen.x = i; offen.xTag = tag; offen.v = p; offen.xArt = art; runden.push(offen); offen = null; }
+  });
+  if (offen) runden.push(offen);
+  return runden;
+}
+function tagChart(a, von, bis, tagVon, tagBis, runde) {
+  const k = a.kurse, mk = a.k10, ml = a.k30;
+  const idx = []; for (let i = von; i <= bis; i++) idx.push(i);
+  const werte = idx.flatMap((i) => [k[i], mk[i], ml[i]]).filter((x) => x != null);
+  let lo = Math.min(...werte), hi = Math.max(...werte); const pad = (hi - lo) * 0.12 || 1; lo -= pad; hi += pad;
+  const W = Math.min(breite() - 40, 520), H = 160;
+  const x = (i) => 8 + (i - von) / Math.max(bis - von, 1) * (W - 16), y = (v) => 10 + (hi - v) / (hi - lo) * (H - 20);
+  const linie = (arr, f, d) => `<path d="${idx.filter((i) => arr[i] != null).map((i, n) => (n ? "L" : "M") + x(i).toFixed(1) + " " + y(arr[i]).toFixed(1)).join("")}" fill="none" stroke="${f}" stroke-width="${d}" stroke-linejoin="round"/>`;
+  let flaeche = "";
+  if (runde && runde.e >= 0) {
+    const e = Math.max(runde.e, von), xe = runde.x == null || runde.x < 0 ? bis : Math.min(runde.x, bis);
+    const erg = (runde.x == null ? k[k.length - 1] : runde.v) - runde.k, f = runde.art === "Short" ? farbe(-erg) : farbe(erg);
+    if (xe >= e) flaeche = `<rect x="${x(e)}" y="0" width="${Math.max(x(xe) - x(e), 2)}" height="${H}" fill="${f}" opacity="0.08"/><line x1="${x(e)}" x2="${x(xe)}" y1="${y(runde.k)}" y2="${y(runde.k)}" stroke="#6E6E7A" stroke-dasharray="3 3"/>`;
+  }
+  const tagRahmen = `<rect x="${x(tagVon) - (tagVon === tagBis ? 5 : 2)}" y="2" width="${Math.max(x(tagBis) - x(tagVon), 0) + (tagVon === tagBis ? 10 : 4)}" height="${H - 4}" rx="4" fill="none" stroke="${TEXT}" stroke-opacity="0.45" stroke-dasharray="2 3"/>`;
+  const marken = a.akt.map(([tag, art, p]) => ({ i: a.tage.indexOf(tag), art, p })).filter((m) => m.i >= von && m.i <= bis).map((m) =>
+    `<circle cx="${x(m.i)}" cy="${y(m.p)}" r="8" fill="${ART_FARBE[m.art] || "#F4F4F6"}" stroke="#0B0B0E" stroke-width="2"/><text x="${x(m.i)}" y="${y(m.p) + 3.6}" fill="#0B0B0E" font-size="10" font-weight="800" text-anchor="middle">${ART_BUCHSTABE[m.art] || "V"}</text>`).join("");
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Chart rund um diesen Tag" style="display:block;margin-top:12px">
+    ${flaeche}${tagRahmen}${linie(ml, AKZENT, 1.5)}${linie(mk, GELB, 1.5)}${linie(k, TEXT, 2)}${marken}</svg>
+  <div class="legende" style="padding:6px 0 0;justify-content:flex-start"><span><span class="strich" style="background:${TEXT}"></span>Kurs</span><span><span class="strich" style="background:${GELB}"></span>Ø${KURZ}</span><span><span class="strich" style="background:${AKZENT}"></span>Ø${LANG}</span><span><span class="strich" style="border-top:2px dashed ${TEXT};opacity:.6;height:0"></span>dieser Tag</span></div>`;
+}
+function grundFuer(a, i, art, p, runde) {
+  // Warum hat der Bot an dieser Kerze so gehandelt?
+  const k = a.k10[i], l = a.k30[i], kv = a.k10[i - 1], lv = a.k30[i - 1];
+  if (k == null || l == null) return "Für diese Kerze gibt es noch nicht genug Kurse für die Durchschnitte.";
+  const ab = (k - l) / l * 100, werte = `Ø${KURZ} ${geld(k)}, Ø${LANG} ${geld(l)}, Abstand ${vz(ab)}${zahl(ab, 2)} %`;
+  const kreuz = kv != null && lv != null && ((kv <= lv && k > l) || (kv >= lv && k < l));
+  const B = BOTS[AKTIV];
+  if (art === "Gesichert") {
+    const l2 = (((B.gelernt || {})[a.t] || {}).lektionen || []).find((x) => x.bis === a.tage[i] && x.typ === "Gewinn gesichert");
+    return `<b>Gewinn gesichert:</b> ${l2 ? `Er lag bis zu ${zahl(l2.hoch, 1)} % im Plus. Dann fiel der Kurs ${zahl(l2.nz_vorher, 1)} % unter den Höchststand, also hat er verkauft und ${vz(l2.erg)}${zahl(l2.erg, 1)} % behalten.` : "Der Kurs ist so weit unter seinen Höchststand gefallen, dass er den Gewinn mitgenommen hat."} Das hat er aus früheren Runden gelernt, in denen er Gewinne wieder verschenkt hat.`;
+  }
+  if (art === "Stop") { const rueck = runde ? (p / runde.k - 1) * 100 : null; return `<b>Notbremse:</b> Der Kurs fiel auf ${geld(p)}${rueck != null ? `, das sind ${zahl(rueck, 1)} % unter dem Kaufkurs von ${geld(runde.k)}` : ""}. Ab ${B.stop || 5} % Minus verkauft er sofort, egal was die Durchschnitte sagen.`; }
+  if (art === "Kauf") {
+    let t = `Ø${KURZ} lag <b>über</b> Ø${LANG} (${werte}).${kreuz ? ` An dieser Kerze ist Ø${KURZ} von unten über Ø${LANG} gestiegen, das ist sein Kaufsignal.` : " Der Aufwärtstrend lief also, und er war noch nicht drin."}`;
+    if (B.gelernt) { const l2 = ((B.gelernt[a.t] || {}).lektionen || []).find((x) => x.von === a.tage[i]); if (l2) t += ` Seine Vorsicht lag damals bei ${zahl(l2.vorher, 2)} %, der Abstand war größer, also hat er gekauft.`; }
+    return t;
+  }
+  if (art === "Verkauf") return `Ø${KURZ} ist <b>unter</b> Ø${LANG} gefallen (${werte}). Der Aufwärtstrend war damit vorbei, also hat er verkauft.${B.richtung === "beide" ? " Direkt danach ist er short gegangen." : ""}`;
+  if (art === "Short") return `Ø${KURZ} lag <b>unter</b> Ø${LANG} (${werte}). Er hat auf weiter fallende Kurse gesetzt.`;
+  if (art === "Eindecken") return `Ø${KURZ} ist wieder <b>über</b> Ø${LANG} gestiegen (${werte}). Der Abwärtstrend war vorbei, also hat er die geliehenen Aktien zurückgekauft.${B.richtung === "beide" ? " Direkt danach hat er long gekauft." : ""}`;
+  // Kein Trade an diesem Tag
+  if (runde && runde.e <= i && (runde.x == null || runde.x > i)) return `Kein Trade: Er war ${runde.art === "Short" ? "short" : "investiert"} und hat gehalten, weil Ø${KURZ} weiter ${runde.art === "Short" ? "unter" : "über"} Ø${LANG} lag (${werte}).`;
+  return `Kein Trade: Er hatte hier nur Bargeld und hat gewartet, weil ${ab > 0 ? `zwar Ø${KURZ} über Ø${LANG} lag (${werte}), er aber ${istHaupt() ? "nur am Tag der Kreuzung kauft" : B.gelernt ? "einen größeren Abstand verlangt oder gerade nach einem Stop wartet" : B.stop ? "nach einem Stop auf einen neuen Trend wartet" : "kein neues Signal hatte"}` : `Ø${KURZ} unter Ø${LANG} lag (${werte})`}.`;
+}
+function besserFuer(a, runde, tagVon, tagBis) {
+  // Im Nachhinein: was wäre besser gewesen?
+  const k = a.kurse, n = k.length, tipps = [];
+  const einheit = istStunde() ? "Stunden" : "Tagen";
+  if (runde && runde.e >= 0) {
+    const ende = runde.x == null || runde.x < 0 ? n - 1 : runde.x, short = runde.art === "Short";
+    const spanne = k.slice(runde.e, ende + 1);
+    const bestI = runde.e + (short ? spanne.indexOf(Math.min(...spanne)) : spanne.indexOf(Math.max(...spanne)));
+    const erg = (p) => (short ? (1 - p / runde.k) : (p / runde.k - 1)) * 100;
+    const ist = erg(runde.x == null ? k[n - 1] : runde.v), best = erg(k[bestI]);
+    if (best - ist > 0.3) tipps.push(`<b>Besserer Ausstieg:</b> Am ${datum(a.tage[bestI])} bei ${geld(k[bestI])} hätte er ${vz(best)}${zahl(best, 1)} % gehabt, ${runde.x == null ? "gerade steht er bei" : "geschafft hat er"} ${vz(ist)}${zahl(ist, 1)} %. Mit ${short ? "einem Stop knapp über dem Tiefstkurs" : "einer Gewinnmitnahme oder einem nachgezogenen Stop"} hätte er mehr davon behalten.`);
+    else if (runde.x != null) tipps.push(`<b>Ausstieg passte:</b> Viel besser als ${vz(ist)}${zahl(ist, 1)} % ging es in dieser Runde nicht.`);
+    const vor = k.slice(Math.max(0, runde.e - 5), Math.min(n, runde.e + 6)), vorStart = Math.max(0, runde.e - 5);
+    const eI = vorStart + (short ? vor.indexOf(Math.max(...vor)) : vor.indexOf(Math.min(...vor)));
+    const gewinnEinstieg = short ? (k[eI] / runde.k - 1) * 100 : (1 - k[eI] / runde.k) * 100;
+    if (eI !== runde.e && gewinnEinstieg > 0.3) tipps.push(`<b>Besserer Einstieg:</b> ${eI < runde.e ? "Etwas früher" : "Etwas später"}, am ${datum(a.tage[eI])} bei ${geld(k[eI])}, wäre der Einstieg ${zahl(gewinnEinstieg, 1)} % günstiger gewesen.${eI > runde.e ? " Er hat also etwas zu früh zugegriffen." : " Die Durchschnitte reagieren immer etwas verspätet."}`);
+  }
+  // Was passierte nach einem Verkauf oder Eindecken an diesem Tag?
+  a.akt.filter(([tag, art]) => { const i = a.tage.indexOf(tag); return i >= tagVon && i <= tagBis && !istEinstieg(art); }).forEach(([tag, art, p]) => {
+    const i = a.tage.indexOf(tag), j = Math.min(i + 10, n - 1);
+    if (j - i < 3) return;
+    const nach = (k[j] / p - 1) * 100, um = istStunde() ? " um " + tag.slice(11, 16) : "", wort = art === "Gesichert" ? "gesichert" : art === "Stop" ? "per Stop verkauft" : "verkauft";
+    if (art === "Eindecken") tipps.push(nach > 0 ? `<b>Richtig eingedeckt${um}:</b> In den ${j - i} ${einheit} danach stieg der Kurs um ${vz(nach)}${zahl(nach, 1)} %.` : `<b>Zu früh eingedeckt${um}:</b> Danach fiel der Kurs noch um ${zahl(nach, 1)} %.`);
+    else tipps.push(nach < 0 ? `<b>Richtig ${wort}${um}:</b> In den ${j - i} ${einheit} danach fiel der Kurs um ${zahl(nach, 1)} %.` : `<b>Zu früh ${wort}${um}:</b> In den ${j - i} ${einheit} danach stieg der Kurs noch um ${vz(nach)}${zahl(nach, 1)} %.`);
+  });
+  if (!runde || (runde.x != null && runde.x < tagVon)) {
+    const tagP = tagVon > 0 ? (k[tagBis] / k[tagVon - 1] - 1) * 100 : 0;
+    if (tagP > 1) tipps.push(`<b>Verpasst:</b> An diesem Tag stieg der Kurs um ${vz(tagP)}${zahl(tagP, 1)} %, er war aber nicht drin.`);
+  }
+  if (!tipps.length) tipps.push("An diesem Tag gab es im Nachhinein nichts, was er klar besser hätte machen können.");
+  return tipps;
+}
+function zeigeTagPosition(t, key) {
+  const a = D.assets.find((x) => x.t === t);
+  if (!a || !a.ok) { schliesseTag(); oeffne(t); return; }
+  const tagIdx = a.tage.map((d, i) => (d.slice(0, 10) === key ? i : -1)).filter((i) => i >= 0);
+  if (!tagIdx.length) { schliesseTag(); oeffne(t); return; }
+  const tagVon = tagIdx[0], tagBis = tagIdx[tagIdx.length - 1];
+  const runden = rundenVon(a);
+  // Position, die an diesem Tag lief (die letzte, die bis Tagesende begonnen hat)
+  const runde = runden.filter((r) => r.e >= 0 && r.e <= tagBis && (r.x == null || r.x >= tagVon)).pop() || null;
+  const heuteAkt = a.akt.filter(([tag]) => tag.slice(0, 10) === key);
+  let von = Math.min(tagVon, runde ? runde.e : tagVon) - 8, bis = Math.max(tagBis, runde && runde.x != null ? runde.x : tagBis) + 8;
+  if (runde && runde.x == null) bis = a.kurse.length - 1;
+  von = Math.max(von, LANG - 1, 0); bis = Math.min(bis, a.kurse.length - 1);
+  if (bis - von > 140) { von = Math.max(0, tagVon - 70); bis = Math.min(a.kurse.length - 1, tagBis + 70); }
+  // Position am Tagesende
+  const offenAmEnde = runde && (runde.x == null || runde.x > tagBis);
+  const pEnde = a.kurse[tagBis];
+  let position;
+  if (offenAmEnde) {
+    const short = runde.art === "Short", e = (short ? 1 - pEnde / runde.k : pEnde / runde.k - 1) * 100;
+    position = `<b>${short ? "Short" : "Investiert"}</b> seit ${datum(runde.eTag)} zu ${geld(runde.k)}. Am Tagesende ${geld(pEnde)}, Ergebnis bis hier <b style="color:${farbe(e)}">${vz(e)}${zahl(e, 2)} %</b>.`;
+  } else position = `<b>Nur Bargeld.</b> Er hatte am Tagesende keine Position in ${esc(a.name)}.`;
+  const tagE = (D.proTag[key] || []).find((x) => x[0] === t);
+  const grunde = heuteAkt.length
+    ? heuteAkt.map(([tag, art, p]) => `<div style="display:flex;gap:10px;padding:9px 0;border-top:1px solid #24242C"><span class="pill" style="height:fit-content;color:${ART_FARBE[art]};background:${ART_BG[art]}">${art}</span><span style="font-size:14px;line-height:1.55"><span class="klein num">${datum(tag)} · ${geld(p)}</span><br>${grundFuer(a, a.tage.indexOf(tag), art, p, runde)}</span></div>`).join("")
+    : `<div style="font-size:14px;line-height:1.55">${grundFuer(a, tagBis, "", pEnde, runde)}</div>`;
+  const tipps = besserFuer(a, runde, tagVon, tagBis);
+  const F = botFarbe();
+  zeigeInfo(a.name + " am " + datum(key), `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:-4px"><span class="pill" style="color:${F};background:${BOT_INFO[AKTIV].bg}">${esc(botName())}</span>${tagE ? `<span class="num" style="font-weight:700;color:${farbe(tagE[1])}">${vz(tagE[1])}${betrag(tagE[1], 2)} an diesem Tag</span>` : ""}</div>
+    ${tagChart(a, von, bis, tagVon, tagBis, runde)}
+    <div style="margin-top:14px;padding:12px 14px;border-radius:14px;background:#1C1C22"><div style="font-size:12px;font-weight:700;color:${F};text-transform:uppercase;letter-spacing:.5px">Position</div><div style="font-size:14px;margin-top:6px;line-height:1.55">${position}</div></div>
+    <div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:#1C1C22"><div style="font-size:12px;font-weight:700;color:${TEXT};text-transform:uppercase;letter-spacing:.5px">${heuteAkt.length ? "Was er gemacht hat und warum" : "Warum er nichts gemacht hat"}</div><div style="margin-top:6px">${grunde}</div></div>
+    <div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:rgba(245,185,74,0.08);border:1px solid rgba(245,185,74,0.25)"><div style="font-size:12px;font-weight:700;color:${GELB};text-transform:uppercase;letter-spacing:.5px">Was er besser hätte machen können</div>
+    ${tipps.map((x) => `<div style="font-size:14px;line-height:1.55;margin-top:8px">${x}</div>`).join("")}
+    <div class="leise" style="font-size:11.5px;margin-top:10px;line-height:1.5">Im Nachhinein ist es leicht. Der Bot kennt in dem Moment nur die Kurse bis zu dieser Kerze.</div></div>
+    <button onclick="schliesseTag(); setTimeout(() => oeffne('${t}'), 270)" style="display:block;width:100%;margin-top:14px;padding:13px;border-radius:14px;background:#1C1C22;font-size:14px;font-weight:700;color:${F}">Ganze Aktie ansehen</button>`);
 }
 function schliesseTag() {
   const sh = document.getElementById("sheet"), hg = document.getElementById("sheethg");
@@ -1493,12 +1665,18 @@ function erklaere(was) {
     rsi: ["RSI", `Der <b>RSI</b> (Relative-Stärke-Index) misst auf einer Skala von 0 bis 100, wie stark ein Kurs in den letzten 14 Tagen gestiegen oder gefallen ist.<br><br>Über 70 gilt eine Aktie oft als <b>überkauft</b> (schnell stark gestiegen), unter 30 als <b>überverkauft</b>.` + (a && a.rsi[n - 1] != null ? `<br><br>Bei ${esc(a.name)} liegt er gerade bei <b>${zahl(a.rsi[n - 1], 1)}</b>.` : "") + `<br><br>Dein Bot nutzt den RSI nicht zum Handeln, er dient nur zur Info.`],
     volumen: ["Volumen", `Das <b>Volumen</b> zeigt, wie viele Aktien an einem Tag gehandelt wurden. Hohes Volumen heißt: viele Käufer und Verkäufer waren aktiv, eine Kursbewegung hat also mehr Gewicht.<br><br>Grüne Balken gehören zu Tagen, an denen der Kurs gestiegen ist, rote zu Tagen, an denen er gefallen ist.` + (a ? `<br><br>Bei ${esc(a.name)} am letzten Tag: <b>${volText(a.vol[n - 1])}</b>.` : "")],
     spanne: ["Spanne", `Die <b>Spanne</b> zeigt, wie weit sich der Kurs in einer Woche oder einem Monat typischerweise bewegt. Sie wird aus den Schwankungen der letzten 60 Tage berechnet.<br><br>In etwa 2 von 3 Fällen bleibt der Kurs innerhalb dieser Spanne. Sie sagt aber <b>nichts über die Richtung</b>: ob es eher hoch oder runter geht, weiß niemand vorher.`],
-    signal: ["Wie ein Signal entsteht", istShort() ? `Der ${botName()} vergleicht ${istStunde() ? "nach jeder Stunde" : "jeden Abend"} die beiden Durchschnitte:<br><br><b style="color:${SHORT_FARBE}">Short</b>: Ø${KURZ} liegt unter Ø${LANG} und er ist noch nicht short.<br><b>Eindecken</b>: Ø${KURZ} liegt über Ø${LANG} und er ist short.<br><br>Short heißt: Er verkauft geliehene Aktien und kauft sie später zurück. Fällt der Kurs dazwischen, verdient er.` : istTurbo() ? `Der Turbo-Bot vergleicht nach jeder Stunde die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} liegt über Ø${LANG} und er hat noch keine Anteile.<br><b>Verkauf</b>: Ø${KURZ} liegt unter Ø${LANG} und er hat Anteile.<br><br>Anders als dein Bot steigt er also auch mitten in einen laufenden Aufwärtstrend ein.` : `Dein Bot vergleicht jeden Abend die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} steigt von unten über Ø${LANG}.<br><b>Verkauf</b>: Ø${KURZ} fällt von oben unter Ø${LANG}.<br><br>Er handelt nur am Tag der Kreuzung, nicht mitten in einem laufenden Trend.` + (a && a.ok && a.noetig != null && Math.abs(a.noetig) <= 25 ? `<br><br>Bei ${esc(a.name)} käme das nächste Signal bei einem Schlusskurs ${a.auf ? "unter" : "über"} <b>${geld(a.schwelle)}</b>.` : "")],
+    signal: ["Wie ein Signal entsteht", istShort() ? `Der ${botName()} vergleicht ${istStunde() ? "nach jeder Stunde" : "jeden Abend"} die beiden Durchschnitte:<br><br><b style="color:${SHORT_FARBE}">Short</b>: Ø${KURZ} liegt unter Ø${LANG} und er ist noch nicht short.<br><b>Eindecken</b>: Ø${KURZ} liegt über Ø${LANG} und er ist short.<br><br>Short heißt: Er verkauft geliehene Aktien und kauft sie später zurück. Fällt der Kurs dazwischen, verdient er.` : istBeide() ? `Der ${botName()} vergleicht ${istStunde() ? "nach jeder Stunde" : "jeden Abend"} die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Long</b>: Ø${KURZ} liegt über Ø${LANG}. Ist er gerade short, deckt er erst ein und kauft dann.<br><b style="color:${SHORT_FARBE}">Short</b>: Ø${KURZ} liegt unter Ø${LANG}. Ist er gerade long, verkauft er erst und geht dann short.<br><br>Er ist also immer im Markt und dreht bei jeder Wende auf die andere Seite.` : !istHaupt() ? `Der ${botName()} vergleicht ${istStunde() ? "nach jeder Stunde" : "jeden Abend"} die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} liegt über Ø${LANG} und er hat noch keine Anteile${istLern() ? ", und der Abstand ist größer als seine gelernte Vorsicht" : ""}.<br><b>Verkauf</b>: Ø${KURZ} liegt unter Ø${LANG} und er hat Anteile.` + (BOTS[AKTIV].stop ? `<br><b style="color:${ART_FARBE.Stop}">Stop-Loss</b>: Der Kurs fällt ${BOTS[AKTIV].stop} % unter den Kaufkurs. Dann verkauft er sofort.` : "") + (istLern() ? `<br><b style="color:${ART_FARBE.Gesichert}">Gesichert</b>: Hat er gelernt, Gewinne zu sichern, verkauft er, wenn der Kurs um seinen Nachzug unter den Höchststand fällt.` : "") + `<br><br>Anders als dein Bot steigt er also auch mitten in einen laufenden Aufwärtstrend ein.` : `Dein Bot vergleicht jeden Abend die beiden Durchschnitte:<br><br><b style="color:${BOT_KAUF}">Kauf</b>: Ø${KURZ} steigt von unten über Ø${LANG}.<br><b>Verkauf</b>: Ø${KURZ} fällt von oben unter Ø${LANG}.<br><br>Er handelt nur am Tag der Kreuzung, nicht mitten in einem laufenden Trend.` + (a && a.ok && a.noetig != null && Math.abs(a.noetig) <= 25 ? `<br><br>Bei ${esc(a.name)} käme das nächste Signal bei einem Schlusskurs ${a.auf ? "unter" : "über"} <b>${geld(a.schwelle)}</b>.` : "")],
     treffer: ["Trefferquote", `Die <b>Trefferquote</b> ist der Anteil der abgeschlossenen Runden (Kauf und Verkauf), die mit Gewinn endeten.` + (RUNDEN.length ? `<br><br>Bei dir: <b>${RUNDEN.filter((r) => r.proz > 0).length} von ${RUNDEN.length}</b> Runden im Plus.` : "") + `<br><br>Wichtig: Auch eine niedrige Trefferquote kann Gewinn bringen, wenn die Gewinne größer sind als die Verluste. Das siehst du in der Bot-Statistik unter Aktivität.`],
     liegenlassen: ["Liegenlassen (Buy-and-Hold)", `<b>Liegenlassen</b> heißt: am ersten Tag kaufen und dann einfach halten, ohne zu handeln.<br><br>Das ist der wichtigste Maßstab für jeden Bot. Nur wenn der Bot <b>mehr</b> schafft als Liegenlassen, lohnt sich das ganze Kaufen und Verkaufen. Sonst wäre einfaches Halten besser und günstiger.` + (m ? `<br><br>Dein Depot gerade: Bot <b>${geldW(v.bot[m - 1])}</b>, Liegenlassen <b>${geldW(v.bh[m - 1])}</b>.` : "")],
     turbo: ["Turbo-Bot", `Der <b style="color:${TURBO_FARBE}">Turbo-Bot</b> ist ein zweiter Bot mit eigenem Spielgeld. Er handelt nach schnelleren Regeln:<br><br>• Er nutzt <b>Stundenkerzen</b> statt Tageskerzen und entscheidet nach jeder abgeschlossenen Stunde.<br>• Er vergleicht <b>Ø5 und Ø20</b>, also die letzten 5 und 20 Stunden.<br>• Er ist <b>im Markt, solange Ø5 über Ø20 liegt</b>, und steigt auch in laufende Trends ein.<br><br>Dafür handelt er viel öfter, zahlt mehr Gebühren und fällt leichter auf kurze Zacken rein. Ob sich das lohnt, zeigt dir das Duell.`],
     short: ["Short-Bot", `Der <b style="color:${SHORT_FARBE}">Short-Bot</b> setzt auf <b>fallende</b> Kurse. Er nutzt dieselben Durchschnitte wie dein Bot (<b>Ø10 und Ø30 Tage</b>), nur andersherum:<br><br>• Liegt Ø10 unter Ø30, geht er <b>short</b>: Er verkauft geliehene Aktien.<br>• Steigt Ø10 wieder über Ø30, <b>deckt er ein</b>: Er kauft sie zurück.<br><br>Fällt der Kurs in der Zwischenzeit, macht er Gewinn. Steigt er, macht er Verlust. Bei echtem Geld ginge das nur über spezielle Produkte wie CFDs, hier ist alles Spielgeld.`],
     tshort: ["Turbo-Short", `Der <b style="color:${TSHORT_FARBE}">Turbo-Short</b> ist das Gegenstück zum Turbo-Bot. Er setzt auf <b>fallende</b> Kurse und nutzt <b>Stundenkerzen mit Ø5 und Ø20</b>:<br><br>• Liegt Ø5 unter Ø20, geht er <b>short</b>.<br>• Steigt Ø5 wieder über Ø20, <b>deckt er ein</b>.<br><br>Er entscheidet nach jeder fertigen Stunde und handelt deshalb sehr oft.`],
+    stop: ["Stop-Loss-Bot", `Der <b style="color:${STOP_FARBE}">Stop-Loss-Bot</b> handelt wie ein Trend-Bot mit <b>Tageskerzen und Ø10 / Ø30</b>, hat aber eine Notbremse:<br><br>• <b>Kauf</b>, solange Ø10 über Ø30 liegt.<br>• <b>Verkauf</b>, wenn Ø10 unter Ø30 fällt.<br>• <b style="color:${ART_FARBE.Stop}">Stop-Loss</b>: Fällt der Kurs <b>5 % unter seinen Kaufkurs</b>, verkauft er sofort, egal was die Durchschnitte sagen.<br><br>Nach einem Stop wartet er, bis der Trend einmal nach unten gedreht hat, und steigt erst beim nächsten neuen Aufwärtstrend wieder ein.`],
+    tstop: ["Turbo-Stop", `Der <b style="color:${TSTOP_FARBE}">Turbo-Stop</b> ist der Stop-Loss-Bot mit <b>Stundenkerzen und Ø5 / Ø20</b>.<br><br>Seine Notbremse greift schon bei <b>2 % unter dem Kaufkurs</b>, weil er viel öfter handelt. Nach einem Stop wartet er auf den nächsten neuen Aufwärtstrend.`],
+    ls: ["Long-Short-Bot", `Der <b style="color:${LS_FARBE}">Long-Short-Bot</b> ist <b>immer im Markt</b> und kann in beide Richtungen verdienen (Tageskerzen, Ø10 / Ø30):<br><br>• Liegt Ø10 über Ø30, ist er <b style="color:${BOT_KAUF}">long</b> und verdient, wenn der Kurs steigt.<br>• Liegt Ø10 unter Ø30, ist er <b style="color:${SHORT_FARBE}">short</b> und verdient, wenn der Kurs fällt.<br><br>Bei jeder Wende schließt er die alte Position und dreht sofort auf die andere Seite.`],
+    tls: ["Turbo-L/S", `Der <b style="color:${TLS_FARBE}">Turbo-L/S</b> ist der Long-Short-Bot mit <b>Stundenkerzen und Ø5 / Ø20</b>. Er ist immer im Markt, long bei Aufwärtstrend, short bei Abwärtstrend, und dreht nach jeder fertigen Stunde, wenn sich der Trend wendet.`],
+    lern: ["Lern-Bot", `Der <b style="color:${LERN_FARBE}">Lern-Bot</b> lernt aus seinen eigenen Fehlern (Tageskerzen, Ø10 / Ø30):<br><br>• Er kauft, wenn Ø10 über Ø30 liegt, aber nur, wenn der <b>Abstand</b> zwischen den beiden groß genug ist.<br>• Nach jeder <b>Verlust-Runde</b> wird er bei dieser Aktie <b>vorsichtiger</b>: Er braucht 0,5 %-Punkte mehr Abstand (höchstens 3 %).<br>• Nach jeder <b>Gewinn-Runde</b> wird er wieder etwas mutiger (−0,25 %-Punkte).<br>• Hat er einen <b>Gewinn wieder verschenkt</b>, sichert er Gewinne ab dann: War er mindestens 8 % im Plus und fällt der Kurs danach 4 % unter den Höchststand, verkauft er. Passiert es wieder, zieht er enger nach (bis 2 %).<br>• Hat er <b>zu früh gesichert</b> und der Kurs steigt weiter, lässt er wieder mehr Luft (bis 6 %) und steigt neu ein.<br><br>Was er gelernt hat, siehst du in seinem Depot unter „Was er gelernt hat“.`],
+    tlern: ["Turbo-Lern", `Der <b style="color:${TLERN_FARBE}">Turbo-Lern</b> ist der Lern-Bot mit <b>Stundenkerzen und Ø5 / Ø20</b>. Nach jedem Verlust braucht er bei dieser Aktie 0,1 %-Punkte mehr Abstand zwischen den Durchschnitten (höchstens 1 %), nach jedem Gewinn 0,05 %-Punkte weniger. Verschenkt er Gewinne, sichert er sie ab dann: War er mindestens 2 % im Plus, verkauft er 1 % unter dem Höchststand (enger bis 0,4 %, lockerer bis 2 %).`],
     liga: ["Bot-Liga", `In der <b>Bot-Liga</b> treten mehrere Bots mit demselben Spielgeld gegeneinander an.<br><br><b>Echte Bots</b> (Dein Bot, Turbo-Bot) handeln wirklich jeden Tag mit, ihre Ergebnisse sind genau die aus deinem Depot.<br><b>Simulationen</b> zeigen, wie Bots mit anderen Regeln gehandelt hätten, zurückgerechnet mit echten Kursen.<br><b>Liegenlassen</b> ist der Maßstab: am Start kaufen und nichts mehr tun.<br><br>Gezählt wird in Prozent seit dem eigenen Start. Tippe auf einen Bot, um alle Details zu sehen.`],
   };
   const [titel, html] = texte[was] || ["", ""];
@@ -1560,12 +1738,18 @@ function rechneLiga() {
     const assets = {};
     D.assets.forEach((a) => { const z = B.assets[a.t] || { akt: [], stk: 0 }; assets[a.t] = { wert: wertJetzt(B, a), akt: z.akt, drin: z.stk !== 0, short: z.stk < 0 }; });
     liste.push({ id, name, regel, farbe, echt: true, kerzen, labels: B.depot.labels, reihe: B.depot.bot, start: startGeld,
-      ende: D.assets.reduce((s, a) => s + assets[a.t].wert, 0), assets, kurz: B.kurz, lang: B.lang, trend: B.trend, short: B.richtung === "short" });
+      ende: D.assets.reduce((s, a) => s + assets[a.t].wert, 0), assets, kurz: B.kurz, lang: B.lang, trend: B.trend, short: B.richtung === "short", beide: B.richtung === "beide", stop: B.stop, lernen: B.lernen });
   };
   echt("haupt", H, "Dein Bot", `Ø${D.kurz} / Ø${D.lang} Tage`, AKZENT, "Tageskerzen");
   echt("turbo", T, "Turbo-Bot", `Ø${T ? T.kurz : 5} / Ø${T ? T.lang : 20} Stunden`, TURBO_FARBE, "Stundenkerzen");
   echt("short", S, "Short-Bot", `Short · Ø${S ? S.kurz : 10} / Ø${S ? S.lang : 30} Tage`, SHORT_FARBE, "Tageskerzen");
   echt("tshort", TS, "Turbo-Short", `Short · Ø${TS ? TS.kurz : 5} / Ø${TS ? TS.lang : 20} Stunden`, TSHORT_FARBE, "Stundenkerzen");
+  ["stop", "tstop", "ls", "tls", "lern", "tlern"].forEach((id) => {
+    const B = BOTS[id], I = BOT_INFO[id];
+    if (!B) return;
+    const vor = B.stop ? `Stop ${B.stop} % · ` : B.richtung === "beide" ? "Long & Short · " : B.gelernt ? "lernt · " : "";
+    echt(id, B, I.name, `${vor}Ø${B.kurz} / Ø${B.lang} ${B.intervall === "1h" ? "Stunden" : "Tage"}`, I.farbe, B.intervall === "1h" ? "Stundenkerzen" : "Tageskerzen");
+  });
 
   // Liegenlassen: am ersten Tag deines Bots kaufen und halten
   if (H && H.depot.labels.length) {
@@ -1675,7 +1859,7 @@ function ligaChart(bots, tage, H, boxId, dick) {
 
 function botMarke(b, g) {
   const pfade = {
-    haupt: BOT_INFO.haupt.pfad, turbo: BOT_INFO.turbo.pfad, short: BOT_INFO.short.pfad, tshort: BOT_INFO.tshort.pfad,
+    ...Object.fromEntries(Object.entries(BOT_INFO).map(([k, v]) => [k, v.pfad])),
     liegen: '<path d="M7 11V7a5 5 0 0 1 10 0v4"/><rect x="4" y="11" width="16" height="10" rx="2"/>',
     schnell: '<path d="M5 12h14M13 6l6 6-6 6"/>',
     langsam: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -1736,9 +1920,13 @@ function botProfilSeite() {
   const regeln = b.liegen
     ? `Kauft am ersten Tag jede Aktie für ${zahl(D.start, 0) + " $"} und macht danach <b>nichts mehr</b>. Das ist der wichtigste Maßstab: Ein Bot lohnt sich nur, wenn er mehr schafft als einfaches Liegenlassen.`
     : `<b>Kerzen:</b> ${b.kerzen}, entscheidet ${stunde ? "nach jeder fertigen Stunde" : "einmal am Abend nach Börsenschluss"}.<br>
-       ${b.short ? `<b style="color:${SHORT_FARBE}">Short:</b> solange Ø${b.kurz} unter Ø${b.lang} liegt. Er verkauft geliehene Aktien und verdient, wenn der Kurs fällt.<br>
+       ${b.beide ? `<b style="color:${BOT_KAUF}">Long:</b> solange Ø${b.kurz} über Ø${b.lang} liegt.<br>
+       <b style="color:${SHORT_FARBE}">Short:</b> solange Ø${b.kurz} unter Ø${b.lang} liegt. Bei jeder Wende dreht er sofort auf die andere Seite.<br>` : b.short ? `<b style="color:${SHORT_FARBE}">Short:</b> solange Ø${b.kurz} unter Ø${b.lang} liegt. Er verkauft geliehene Aktien und verdient, wenn der Kurs fällt.<br>
        <b>Eindecken:</b> sobald Ø${b.kurz} über Ø${b.lang} steigt. Dann kauft er die Aktien zurück.<br>` : `<b style="color:${BOT_KAUF}">Kauf:</b> ${b.trend ? `solange Ø${b.kurz} über Ø${b.lang} liegt` : `wenn Ø${b.kurz} von unten über Ø${b.lang} steigt`}.<br>
-       <b>Verkauf:</b> ${b.trend ? `sobald Ø${b.kurz} unter Ø${b.lang} fällt` : `wenn Ø${b.kurz} von oben unter Ø${b.lang} fällt`}.<br>`}
+       <b>Verkauf:</b> ${b.trend ? `sobald Ø${b.kurz} unter Ø${b.lang} fällt` : `wenn Ø${b.kurz} von oben unter Ø${b.lang} fällt`}.<br>
+       ${b.stop ? `<b style="color:${ART_FARBE.Stop}">Stop-Loss:</b> sofort raus, wenn der Kurs ${b.stop} % unter den Kaufkurs fällt. Danach erst beim nächsten neuen Aufwärtstrend wieder rein.<br>` : ""}
+       ${b.lernen ? `<b style="color:${LERN_FARBE}">Lernen, Stellschraube 1:</b> nach einem Fehlkauf braucht er ${zahl(b.lernen.schritt, 1)} %-Punkte mehr Abstand zwischen den Durchschnitten (höchstens ${zahl(b.lernen.max, 1)} %), nach jedem Gewinn wieder etwas weniger.<br>
+       <b style="color:#3DDC97">Lernen, Stellschraube 2:</b> verschenkt er einen Gewinn, sichert er Gewinne ab dann: War er mindestens doppelt so weit im Plus, verkauft er, wenn der Kurs ${zahl(b.lernen.nachzug_start, 1)} % unter den Höchststand fällt. Je nach Fehler zieht er enger (bis ${zahl(b.lernen.nachzug_min, 1)} %) oder lässt mehr Luft (bis ${zahl(b.lernen.nachzug_max, 1)} %).<br>` : ""}`}
        <b>Einsatz:</b> ${zahl(D.start, 0) + " $"} pro Aktie, ${zahl(D.gebuehr * 100, 1)} % Gebühr pro Kauf und Verkauf.`;
   const aktien = D.assets.map((a) => ({ a, w: b.assets[a.t] })).filter((x) => x.w).sort((p, q) => q.w.wert - p.w.wert).map(({ a, w }) => {
     const g = w.wert - D.start, p = g / D.start * 100;
@@ -1748,7 +1936,7 @@ function botProfilSeite() {
       ${icon(a, 34)}
       <span style="flex-grow:1;min-width:0"><span style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</span><span class="num" style="font-size:14px;font-weight:600;color:${farbe(g)};white-space:nowrap">${vz(p)}${zahl(p, 2)} %</span></span>
       <span style="display:block;margin-top:6px;height:5px;border-radius:3px;background:#22222A;position:relative"><span style="position:absolute;left:50%;top:-2px;width:1px;height:9px;background:#5E5E6B"></span><span style="position:absolute;top:0;height:5px;border-radius:3px;left:${g >= 0 ? 50 : 50 - breiteBalken}%;width:${breiteBalken}%;background:${farbe(g)}"></span></span>
-      <span class="klein" style="display:block;margin-top:4px">${w.drin ? (w.short ? "Short" : "Im Markt") : "Bargeld"} · ${w.akt.length} ${w.akt.length === 1 ? "Trade" : "Trades"}</span></span>
+      <span class="klein" style="display:block;margin-top:4px">${w.drin ? (w.short ? "Short" : b.beide ? "Long" : "Im Markt") : "Bargeld"}${b.lernen && BOTS[b.id].gelernt[a.t] ? " · braucht " + zahl(BOTS[b.id].gelernt[a.t].vorsicht, 1) + " % Abstand" : ""} · ${w.akt.length} ${w.akt.length === 1 ? "Trade" : "Trades"}</span></span>
     </${klickbar ? "button" : "div"}>`;
   }).join("");
   const letzte = D.assets.flatMap((a) => (b.assets[a.t] ? b.assets[a.t].akt : []).map(([t, art, p]) => ({ a, t, art, p }))).sort((x, y) => (x.t < y.t ? 1 : -1)).slice(0, 8);
@@ -1787,7 +1975,119 @@ function botProfilSeite() {
   <div class="abschnitt"><b>Ergebnis je Aktie</b>${b.echt ? `<span class="klein">Tippen für Chart</span>` : ""}</div>
   <div style="padding:0 8px">${aktien}</div>
   ${b.liegen ? "" : `<div class="karte"><h3>Letzte Trades</h3><div class="liste-trenner" style="margin-top:4px">${tradeListe}</div></div>`}
-  ${b.echt ? `<button onclick="zumDepot('${b.id}')" class="karte" style="display:block;width:calc(100% - 32px);text-align:center;font-weight:700;font-size:15px;color:${b.farbe};padding:15px">${b.id === "haupt" ? "Zum Depot deines Bots" : "Zum Depot · " + esc(b.name)}<span class="leise" style="display:block;font-size:11px;font-weight:500;margin-top:3px">im Tab ${b.id === "turbo" || b.id === "tshort" ? "Turbo" : "Depot"}, oben links umschaltbar</span></button>` : ""}`;
+  ${b.echt ? `<button onclick="zumDepot('${b.id}')" class="karte" style="display:block;width:calc(100% - 32px);text-align:center;font-weight:700;font-size:15px;color:${b.farbe};padding:15px">${b.id === "haupt" ? "Zum Depot deines Bots" : "Zum Depot · " + esc(b.name)}<span class="leise" style="display:block;font-size:11px;font-weight:500;margin-top:3px">im Tab ${istTurboId(b.id) ? "Turbo" : "Depot"}, oben links umschaltbar</span></button>` : ""}`;
+}
+
+// ---------- Lern-Bot: was er gelernt hat ----------
+const FEHLER_FARBE = { "Trend zu Ende": "#FF7A7A", "Gewinn verschenkt": "#F5B94A", "Fehlsignal": "#F472B6", "Seitwärts": "#9A9AA6", "Zu früh gesichert": "#38BDF8", "Gewinn": "#3DDC97", "Gewinn gesichert": "#3DDC97" };
+function lernDaten() {
+  const B = BOTS[AKTIV], G = (B && B.gelernt) || {};
+  const alle = D.assets.flatMap((a) => ((G[a.t] || {}).lektionen || []).map((l, k) => ({ a, k, ...l }))).sort((x, y) => (x.bis < y.bis ? 1 : -1));
+  return { B, G, alle, fehler: alle.filter((l) => l.erg < 0) };
+}
+function fehlerZeile(l) {
+  return `<button class="zeile" onclick="zeigeFehler('${l.a.t}', ${l.k})" style="padding:9px 2px;gap:10px;border-top:1px solid #1F1F26;border-radius:0">${icon(l.a, 30)}
+    <span style="flex-grow:1;min-width:0"><span style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:600"><span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(l.a.name)}</span><span class="pill" style="padding:2px 7px;font-size:10px;color:${FEHLER_FARBE[l.typ] || ROT};background:${(FEHLER_FARBE[l.typ] || ROT)}22;white-space:nowrap">${esc(l.typ)}</span></span>
+    <span class="klein num" style="display:block;margin-top:2px">${kurzDatum(l.von)} – ${kurzDatum(l.bis)} · ${l.dauer} ${istStunde() ? "Std" : (l.dauer === 1 ? "Tag" : "Tage")}</span></span>
+    <span class="num" style="font-size:14px;font-weight:700;color:${farbe(l.erg)};white-space:nowrap">${vz(l.erg)}${zahl(l.erg, 1)} %</span>
+    <svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true" style="flex-shrink:0;opacity:.4"><path d="M1 1l6 6-6 6" fill="none" stroke="${TEXT}" stroke-width="2" stroke-linecap="round"/></svg></button>`;
+}
+function lernKarte() {
+  const { B, G, alle, fehler } = lernDaten(), L = B.lernen || { max: 3 };
+  const treffer = alle.length - fehler.length;
+  const zeilen = D.assets.map((a) => ({ a, v: (G[a.t] || {}).vorsicht || 0, nz: (G[a.t] || {}).nachzug })).sort((p, q) => q.v - p.v || (p.nz == null) - (q.nz == null));
+  const balken = zeilen.map(({ a, v, nz }) => `<div style="display:flex;align-items:center;gap:10px;padding:6px 0">${icon(a, 26)}
+    <span style="width:70px;font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(a.name)}</span>
+    <span style="flex-grow:1;height:6px;border-radius:3px;background:#22222A;position:relative"><span style="position:absolute;left:0;top:0;height:6px;border-radius:3px;width:${Math.max(v / L.max * 100, v ? 4 : 0)}%;background:${BOT_INFO[AKTIV].farbe}"></span></span>
+    <span class="num" style="width:50px;text-align:right;font-size:12px;font-weight:600;white-space:nowrap">${zahl(v, v < 1 && v > 0 ? 2 : 1)} %</span>
+    <span class="num pill" style="width:52px;justify-content:center;padding:3px 0;font-size:11px;${nz == null ? "color:#5E5E6B;background:#1C1C22" : "color:#3DDC97;background:rgba(61,220,151,0.12)"}">${nz == null ? "aus" : zahl(nz, 1) + " %"}</span></div>`).join("");
+  // Welche Art Fehler macht er am häufigsten?
+  const arten = {};
+  fehler.forEach((l) => { arten[l.typ] = (arten[l.typ] || 0) + 1; });
+  const artBalken = Object.entries(arten).sort((x, y) => y[1] - x[1]).map(([typ, n]) => `<div style="flex:${n};background:${FEHLER_FARBE[typ] || ROT}" title="${esc(typ)}"></div>`).join('<div style="width:2px;background:#141418"></div>');
+  const artLegende = Object.entries(arten).sort((x, y) => y[1] - x[1]).map(([typ, n]) => `<button onclick="erklaereFehlerArt('${typ}')" style="display:inline-flex;align-items:center;gap:5px;font-size:12px;color:#C7C7D1;margin:6px 12px 0 0"><span class="fleck" style="background:${FEHLER_FARBE[typ] || ROT}"></span>${esc(typ)} <b class="num">${n}</b></button>`).join("");
+  const F = BOT_INFO[AKTIV].farbe, zeigen = state.alleFehler ? fehler : fehler.slice(0, 5);
+  return `<div class="karte" style="margin-top:22px;border:1px solid ${F}44">
+    <div style="display:flex;justify-content:space-between;align-items:center"><h3 style="display:flex;align-items:center;gap:8px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${F}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${HIRN}</svg>Was er gelernt hat</h3>
+    <button class="frage" onclick="erklaere('${AKTIV}')" aria-label="Wie lernt der Bot?">?</button></div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:12px">
+      <div class="kachel2"><div class="klein">Fehler</div><div class="num" style="font-size:18px;font-weight:700;margin-top:4px;color:${ROT}">${fehler.length}</div></div>
+      <div class="kachel2"><div class="klein">Gewinn-Runden</div><div class="num" style="font-size:18px;font-weight:700;margin-top:4px;color:${GRUEN}">${treffer}</div></div>
+    </div>
+    ${fehler.length ? `<div class="klein" style="margin-top:16px;font-size:12px;font-weight:600;color:#C7C7D1">Welche Fehler er macht</div>
+    <div style="display:flex;height:8px;border-radius:4px;overflow:hidden;margin-top:8px">${artBalken}</div><div>${artLegende}</div>` : ""}
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px"><span class="klein" style="font-size:12px;font-weight:600;color:#C7C7D1">Seine zwei Stellschrauben je Aktie</span><span class="klein" style="font-size:11px;width:52px;text-align:center">Sichern</span></div>
+    <div class="klein" style="margin-top:2px;font-size:12px;line-height:1.45"><b style="color:${BOT_INFO[AKTIV].farbe}">Vorsicht:</b> nötiger Abstand von Ø${KURZ} über Ø${LANG}, bevor er kauft.<br><b style="color:#3DDC97">Sichern:</b> fällt der Kurs so weit unter den Höchststand, nimmt er den Gewinn mit.</div>
+    <div style="margin-top:6px">${balken}</div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:16px"><span class="klein" style="font-size:12px;font-weight:600;color:#C7C7D1">Seine Fehler</span><span class="leise" style="font-size:11px">Tippen für Details</span></div>
+    <div style="margin-top:6px">${zeigen.length ? zeigen.map(fehlerZeile).join("") : `<div class="klein" style="padding:8px 0">Noch kein Fehler, aus dem er lernen konnte.</div>`}</div>
+    ${fehler.length > 5 ? `<button onclick="setze({alleFehler:${!state.alleFehler}})" style="display:block;width:100%;text-align:center;padding:12px 0 2px;font-size:13px;font-weight:600;color:${F}">${state.alleFehler ? "Weniger anzeigen" : `Alle ${fehler.length} Fehler anzeigen`}</button>` : ""}
+  </div>`;
+}
+// Fehler einer einzelnen Aktie (in der Aktien-Ansicht)
+function fehlerKarte(a) {
+  const liste = lernDaten().alle.filter((l) => l.a === a);
+  if (!liste.length) return "";
+  const v = ((BOTS[AKTIV].gelernt || {})[a.t] || {}).vorsicht || 0, nz = ((BOTS[AKTIV].gelernt || {})[a.t] || {}).nachzug;
+  return `<div class="karte"><div style="display:flex;justify-content:space-between;align-items:center"><h3 style="font-size:15px">Gelernt bei ${esc(a.name)}</h3><span style="display:flex;gap:6px"><span class="pill num" style="color:${BOT_INFO[AKTIV].farbe};background:${BOT_INFO[AKTIV].bg}">Vorsicht ${zahl(v, 2)} %</span><span class="pill num" style="color:#3DDC97;background:rgba(61,220,151,0.12)">Sichern ${nz == null ? "aus" : zahl(nz, 1) + " %"}</span></span></div>
+    <div class="klein" style="margin-top:6px;font-size:12px">Alle abgeschlossenen Runden. Tippe auf eine, um zu sehen, was passiert ist und warum.</div>
+    <div style="margin-top:6px">${liste.map(fehlerZeile).join("")}</div></div>`;
+}
+function fehlerChart(a, l) {
+  const R = istStunde() && a.stdReihe ? a.stdReihe : a.tagReihe;
+  const i0 = R.tage.indexOf(l.von), i1 = R.tage.indexOf(l.bis);
+  if (i0 < 0 || i1 < 0) return "";
+  const von = Math.max(0, i0 - 10), bis = Math.min(R.tage.length - 1, i1 + 6);
+  const k = R.kurse, mk = schnitt(k, KURZ), ml = schnitt(k, LANG);
+  const idx = []; for (let i = von; i <= bis; i++) idx.push(i);
+  const werte = idx.flatMap((i) => [k[i], mk[i], ml[i]]).filter((x) => x != null);
+  let lo = Math.min(...werte), hi = Math.max(...werte); const pad = (hi - lo) * 0.12 || 1; lo -= pad; hi += pad;
+  const W = Math.min(breite() - 40, 520), H = 150;
+  const x = (i) => 6 + (i - von) / Math.max(bis - von, 1) * (W - 12), y = (v) => 8 + (hi - v) / (hi - lo) * (H - 16);
+  const linie = (arr, f, d) => `<path d="${idx.filter((i) => arr[i] != null).map((i, n) => (n ? "L" : "M") + x(i).toFixed(1) + " " + y(arr[i]).toFixed(1)).join("")}" fill="none" stroke="${f}" stroke-width="${d}" stroke-linejoin="round"/>`;
+  const punkt = (i, f, b) => `<circle cx="${x(i)}" cy="${y(k[i])}" r="8" fill="${f}" stroke="#0B0B0E" stroke-width="2"/><text x="${x(i)}" y="${y(k[i]) + 3.6}" fill="#0B0B0E" font-size="10" font-weight="800" text-anchor="middle">${b}</text>`;
+  return `<svg width="100%" viewBox="0 0 ${W} ${H}" role="img" aria-label="Kurs während der Runde" style="display:block;margin-top:12px">
+    <rect x="${x(i0)}" y="0" width="${Math.max(x(i1) - x(i0), 2)}" height="${H}" fill="${farbe(l.erg)}" opacity="0.08"/>
+    <line x1="${x(i0)}" x2="${x(i1)}" y1="${y(l.kauf)}" y2="${y(l.kauf)}" stroke="#6E6E7A" stroke-dasharray="3 3"/>
+    ${l.hebel === "nachzug" && l.nz_nachher != null && l.typ !== "Zu früh gesichert" ? (() => { let hm = k[i0], pts = []; for (let i = i0; i <= i1; i++) { hm = Math.max(hm, k[i]); pts.push((pts.length ? "L" : "M") + x(i).toFixed(1) + " " + y(hm * (1 - l.nz_nachher / 100)).toFixed(1)); } return `<path d="${pts.join("")}" fill="none" stroke="#3DDC97" stroke-width="1.3" stroke-dasharray="4 3" opacity="0.9"/>`; })() : ""}
+    ${linie(ml, AKZENT, 1.5)}${linie(mk, GELB, 1.5)}${linie(k, TEXT, 2)}
+    ${l.typ === "Zu früh gesichert" ? punkt(i0, ART_FARBE.Gesichert, "G") + punkt(i1, ART_FARBE.Kauf, "K") : punkt(i0, ART_FARBE.Kauf, "K") + punkt(i1, l.typ === "Gewinn gesichert" ? ART_FARBE.Gesichert : "#F4F4F6", l.typ === "Gewinn gesichert" ? "G" : "V")}
+  </svg>
+  <div class="legende" style="padding:6px 0 0;justify-content:flex-start"><span><span class="strich" style="background:${TEXT}"></span>Kurs</span><span><span class="strich" style="background:${GELB}"></span>Ø${KURZ}</span><span><span class="strich" style="background:${AKZENT}"></span>Ø${LANG}</span><span><span class="strich" style="border-top:2px dashed #6E6E7A;height:0"></span>${l.typ === "Zu früh gesichert" ? "Verkaufskurs" : "Kaufkurs"}</span>${l.hebel === "nachzug" && l.typ !== "Zu früh gesichert" ? `<span><span class="strich" style="border-top:2px dashed #3DDC97;height:0"></span>neue Sicherung</span>` : ""}</div>`;
+}
+function zeigeFehler(t, k) {
+  const a = D.assets.find((x) => x.t === t), G = (BOTS[AKTIV].gelernt || {})[t];
+  const l = G && G.lektionen[k];
+  if (!a || !l) return;
+  const zeit = (s) => (s.length > 10 ? datum(s.slice(0, 10)) + ", " + s.slice(11) + " Uhr" : datum(s));
+  const reihe = (titel, wert, f) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-top:1px solid #1F1F26;font-size:14px"><span class="klein" style="font-size:13px">${titel}</span><span class="num" style="font-weight:600;text-align:right;${f ? "color:" + f : ""}">${wert}</span></div>`;
+  const fehler = l.erg < 0, F = FEHLER_FARBE[l.typ] || ROT, frueh = l.typ === "Zu früh gesichert";
+  const schraube = l.hebel === "nachzug"
+    ? `Gewinn sichern: ${l.nz_vorher == null ? "aus" : zahl(l.nz_vorher, 1) + " %"} → <b style="color:${TEXT}">${l.nz_nachher == null ? "aus" : zahl(l.nz_nachher, 1) + " %"}</b> unter dem Höchststand`
+    : `Vorsicht (nötiger Abstand): ${zahl(l.vorher, 2)} % → <b style="color:${TEXT}">${zahl(l.nachher, 2)} %</b>`;
+  zeigeInfo(fehler ? "Fehler bei " + a.name : "Gewinn bei " + a.name, `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><span class="pill" style="color:${F};background:${F}22">${esc(l.typ)}</span><span class="num" style="font-weight:700;color:${farbe(l.erg)}">${vz(l.erg)}${zahl(l.erg, 2)} %</span></div>
+    ${fehlerChart(a, l)}
+    <div style="margin-top:12px">
+      ${reihe(frueh ? "Gewinn gesichert" : "Gekauft", zeit(l.von) + " · " + geld(l.kauf))}
+      ${reihe(frueh ? "Wieder gekauft" : "Verkauft", zeit(l.bis) + " · " + geld(l.verkauf))}
+      ${reihe(frueh ? "Zeit dazwischen" : "Dauer", l.dauer + " " + (istStunde() ? "Stunden" : l.dauer === 1 ? "Tag" : "Tage"))}
+      ${frueh ? reihe("Verpasster Anstieg", "+" + zahl(l.hoch, 1) + " %", ROT) : reihe("Bestes Zwischenergebnis", vz(l.hoch) + zahl(l.hoch, 1) + " %", farbe(l.hoch)) + reihe("Schlechtestes Zwischenergebnis", vz(l.tief) + zahl(l.tief, 1) + " %", farbe(l.tief))}
+      ${reihe(`Abstand Ø${KURZ} / Ø${LANG} beim ${frueh ? "Wiedereinstieg" : "Kauf"}`, zahl(l.abstand, 2) + " %")}
+    </div>
+    <div style="margin-top:16px;padding:12px 14px;border-radius:14px;background:#1C1C22"><div style="font-size:12px;font-weight:700;color:${F};text-transform:uppercase;letter-spacing:.5px">${fehler ? "Warum der Fehler passiert ist" : "Warum es geklappt hat"}</div><div style="font-size:14px;margin-top:6px;line-height:1.55">${esc(l.warum)}</div></div>
+    <div style="margin-top:10px;padding:12px 14px;border-radius:14px;background:${BOT_INFO[AKTIV].bg}"><div style="font-size:12px;font-weight:700;color:${BOT_INFO[AKTIV].farbe};text-transform:uppercase;letter-spacing:.5px">Was er daraus gelernt hat</div><div style="font-size:14px;margin-top:6px;line-height:1.55">${esc(l.gelernt)}</div>
+    <div class="num klein" style="margin-top:8px;font-size:12px">${schraube}</div></div>`);
+}
+function erklaereFehlerArt(typ) {
+  const T = {
+    "Trend zu Ende": "Er hat gekauft, als der Aufwärtstrend schon fast vorbei war. Der Kurs fiel danach und kam nicht mehr über den Kaufkurs. Dagegen wird er vorsichtiger beim Kaufen.",
+    "Gewinn verschenkt": "Er lag zwischendurch im Plus, hat aber erst verkauft, als die Durchschnitte nach unten gekreuzt haben. Bis dahin war der Gewinn weg. Dagegen sichert er Gewinne beim nächsten Mal früher.",
+    "Fehlsignal": "Der Aufwärtstrend war beim Kauf nur ganz knapp zu sehen und drehte nach wenigen Kerzen wieder. Genau gegen diese Fehler hilft seine Vorsicht am meisten.",
+    "Seitwärts": "Der Kurs hat sich kaum bewegt. Den kleinen Verlust haben vor allem die Gebühren gemacht.",
+    "Zu früh gesichert": "Er hat einen Gewinn mitgenommen, aber der Trend lief danach weiter. Dann lässt er Gewinnen beim nächsten Mal mehr Luft.",
+  };
+  zeigeInfo(typ, T[typ] || "");
 }
 
 // ---------- Turbo-Bot ----------
@@ -1878,7 +2178,7 @@ function botSchalter() {
 }
 // Bot-Wahl oben links: im Depot "Dein Bot" oder "Short-Bot", im Turbo-Tab "Turbo" oder "Turbo-Short"
 function liesWahl(k, std) { try { const v = localStorage.getItem(k); return v && BOTS[v] ? v : std; } catch (e) { return std; } }
-function wahlPaar() { return state.tab === "turbo" ? ["turbo", "tshort"] : ["haupt", "short"]; }
+function wahlPaar() { return state.tab === "turbo" ? TURBO_IDS : DEPOT_IDS; }
 function zeigeBotWahl() {
   const paar = wahlPaar().filter((id) => BOTS[id]);
   const gewaehlt = state.tab === "turbo" ? state.turboWahl : state.depotWahl;
@@ -1888,24 +2188,24 @@ function zeigeBotWahl() {
     return `<button class="zeile" onclick="waehleBot('${id}')" style="padding:12px 6px;border-radius:14px;${id === gewaehlt ? "background:#1C1C22" : ""}">
       <span class="icon" style="width:42px;height:42px;background:${I.bg}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${I.farbe}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${I.pfad}</svg></span>
       <span style="flex-grow:1;min-width:0"><span style="display:block;font-size:15px;font-weight:700;color:${TEXT}">${I.name}</span>
-      <span class="klein" style="display:block;margin-top:2px">${B.richtung === "short" ? "Short" : "Long"} · Ø${B.kurz} / Ø${B.lang} ${B.intervall === "1h" ? "Stunden" : "Tage"}</span></span>
+      <span class="klein" style="display:block;margin-top:2px">${B.richtung === "short" ? "Short" : B.richtung === "beide" ? "Long & Short" : B.stop ? "Stop " + B.stop + " %" : B.gelernt ? "Lernt" : "Long"} · Ø${B.kurz} / Ø${B.lang} ${B.intervall === "1h" ? "Stunden" : "Tage"}</span></span>
       <span style="text-align:right;white-space:nowrap"><span class="num" style="display:block;font-size:14px;font-weight:600;color:${TEXT}">${betrag(wert, 2)}</span>
       <span class="num" style="display:block;font-size:12px;font-weight:600;margin-top:2px;color:${farbe(gv)}">${vz(p)}${zahl(p, 2)} %</span></span>
       <span style="width:22px;flex-shrink:0;display:flex;justify-content:center">${id === gewaehlt ? `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="${I.farbe}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>` : ""}</span>
     </button>`;
   }).join("");
-  zeigeInfo("Bot wählen", `<div style="margin:-4px -6px 0">${zeilen}</div><div class="leise" style="font-size:12px;margin-top:10px;line-height:1.5">Long-Bots verdienen, wenn Kurse steigen. Short-Bots verdienen, wenn Kurse fallen.</div>`);
+  zeigeInfo("Bot wählen", `<div style="margin:-4px -6px 0">${zeilen}</div><div class="leise" style="font-size:12px;margin-top:10px;line-height:1.5">Long-Bots verdienen, wenn Kurse steigen, Short-Bots, wenn Kurse fallen. Long-Short-Bots können beides, Stop-Loss-Bots begrenzen Verluste und Lern-Bots werden nach Fehlern vorsichtiger.</div>`);
 }
 function waehleBot(id) {
   schliesseTag();
-  if (id === "turbo" || id === "tshort") { state.turboWahl = id; try { localStorage.setItem("bot_wahl_turbo", id); } catch (e) {} }
+  if (istTurboId(id)) { state.turboWahl = id; try { localStorage.setItem("bot_wahl_turbo", id); } catch (e) {} }
   else { state.depotWahl = id; try { localStorage.setItem("bot_wahl_depot", id); } catch (e) {} }
   render(true, "tab");
 }
 function zumDepot(id) {
-  if (id === "turbo" || id === "tshort") { state.turboWahl = id; tab("turbo"); }
+  if (istTurboId(id)) { state.turboWahl = id; tab("turbo"); }
   else { state.depotWahl = id; tab("depot"); }
-  try { localStorage.setItem(id === "turbo" || id === "tshort" ? "bot_wahl_turbo" : "bot_wahl_depot", id); } catch (e) {}
+  try { localStorage.setItem(istTurboId(id) ? "bot_wahl_turbo" : "bot_wahl_depot", id); } catch (e) {}
 }
 function botFuer() {
   if (state.mitteilungen) return "haupt";
@@ -1995,14 +2295,17 @@ BOT_IDS.forEach((bot) => {
   });
 });
 EREIGNISSE.sort((x, y) => (x.t < y.t ? 1 : x.t > y.t ? -1 : 0));
+// Mitteilungen (Glocke, Hinweis oben, Liste) nur von diesen Bots, die neuen Bots melden sich nicht
+const MELDE_BOTS = ["haupt", "turbo", "short", "tshort"];
+const MELDUNGEN = EREIGNISSE.filter((e) => MELDE_BOTS.includes(e.bot));
 // Gelesene Mitteilungen merkt sich die App auf dem Handy
 function liesGelesen() { try { return parseInt(localStorage.getItem("bot_gelesen") || "0", 10) || 0; } catch (e) { return 0; } }
 function merkeGelesen(n) { try { localStorage.setItem("bot_gelesen", String(n)); } catch (e) {} }
 let GELESEN = liesGelesen();
-if (GELESEN > EREIGNISSE.length) { GELESEN = 0; merkeGelesen(0); }
-function ungelesen() { return Math.max(0, EREIGNISSE.length - GELESEN); }
+if (GELESEN > MELDUNGEN.length) { GELESEN = 0; merkeGelesen(0); }
+function ungelesen() { return Math.max(0, MELDUNGEN.length - GELESEN); }
 function badgeText(n) { return n > 99 ? "99+" : String(n); }
-const NEU = EREIGNISSE.slice(0, ungelesen());
+const NEU = MELDUNGEN.slice(0, ungelesen());
 function ereignisText(e) {
   const menge = e.a.einheit === "BTC" ? (e.st || 0).toLocaleString("de-DE", { maximumFractionDigits: 6 }) + " BTC" : zahl(e.st || 0, 2) + " Stk";
   return {
@@ -2012,8 +2315,8 @@ function ereignisText(e) {
 }
 function mitteilungenSeite() {
   const gruppen = {};
-  EREIGNISSE.forEach((e, i) => { e.neu = i < (state.markiert || 0); const tag = e.t.slice(0, 10); (gruppen[tag] = gruppen[tag] || []).push(e); });
-  const inhalt = EREIGNISSE.length ? Object.keys(gruppen).map((t) => `
+  MELDUNGEN.forEach((e, i) => { e.neu = i < (state.markiert || 0); const tag = e.t.slice(0, 10); (gruppen[tag] = gruppen[tag] || []).push(e); });
+  const inhalt = MELDUNGEN.length ? Object.keys(gruppen).map((t) => `
     <div class="klein" style="padding:18px 20px 6px;font-weight:600">${t === D.letzterTag ? "Letzter Handelstag · " : ""}${datum(t)}</div>
     <div class="karte liste-trenner" style="margin-top:0;padding:4px 14px">${gruppen[t].map((e) => {
       const tx = ereignisText(e);
@@ -2028,7 +2331,7 @@ function mitteilungenSeite() {
     <button class="rund" onclick="zurueck()" aria-label="Zurück"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${TEXT}" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
   </div>
   <div style="padding:10px 20px 0"><h1 class="titel">Mitteilungen</h1>
-  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">${BOT_IDS.filter((id) => BOTS[id]).length > 1 ? "Alle Trades von allen deinen Bots." : "Alle Käufe und Verkäufe des Bots."}</div></div>
+  <div class="klein" style="font-size:14px;margin-top:6px;line-height:1.45">${BOT_IDS.filter((id) => BOTS[id]).length > 4 ? "Alle Trades von Dein Bot, Turbo, Short und T-Short. Die neuen Bots melden sich nicht, ihre Trades siehst du in ihrem Depot und unter Aktivität." : BOT_IDS.filter((id) => BOTS[id]).length > 1 ? "Alle Trades von allen deinen Bots." : "Alle Käufe und Verkäufe des Bots."}</div></div>
   <div class="karte">
     <h3>Push-Nachrichten aufs iPhone</h3>
     ${D.modus !== "cloud" ? `<div class="klein" style="font-size:13px;margin-top:8px;line-height:1.5">Kommen mit dem Umzug in die Cloud. Bis dahin siehst du neue Käufe und Verkäufe hier und an der Zahl an der Glocke.</div>` : `<div class="klein" style="font-size:13px;margin-top:8px;line-height:1.5">Kommen über die App <b style="color:${TEXT}">ntfy</b>: Sobald einer deiner Bots kauft oder verkauft, bekommst du eine Nachricht. Klappt ein Lauf nicht, zum Beispiel weil keine Kurse kamen, meldet er sich auch.</div>`}
@@ -2038,7 +2341,7 @@ function mitteilungenSeite() {
 function oeffneMitteilungen() {
   versteckeToast();
   state.markiert = ungelesen();
-  GELESEN = EREIGNISSE.length;
+  GELESEN = MELDUNGEN.length;
   merkeGelesen(GELESEN);
   state.mitteilungen = true;
   history.pushState({ mitteilungen: true }, "");
