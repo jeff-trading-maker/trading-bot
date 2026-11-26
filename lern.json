@@ -1,0 +1,71 @@
+{
+ "AAPL": {
+  "konto": 9.35596448243814e-05,
+  "anteile": 2.809497,
+  "letzter_tag": "2026-11-25",
+  "einstieg": 355.5799865722656,
+  "einstieg_tag": "2026-11-25",
+  "einstieg_abstand": 1.4,
+  "hoechst": 355.5799865722656
+ },
+ "MSFT": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "NVDA": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "GOOGL": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "AMZN": {
+  "konto": 0.00022006538813457155,
+  "anteile": 4.087063,
+  "letzter_tag": "2026-11-25",
+  "einstieg": 244.42999267578125,
+  "einstieg_tag": "2026-11-25",
+  "einstieg_abstand": 0.39,
+  "hoechst": 244.42999267578125
+ },
+ "JPM": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "KO": {
+  "konto": 1.9658608039208048e-05,
+  "anteile": 10.236715,
+  "letzter_tag": "2026-11-25",
+  "einstieg": 97.58999633789062,
+  "einstieg_tag": "2026-11-25",
+  "einstieg_abstand": 2.45,
+  "hoechst": 97.58999633789062
+ },
+ "XOM": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "GLD": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ },
+ "BTC-USD": {
+  "konto": 1000,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-25",
+  "gesperrt": false
+ }
+}

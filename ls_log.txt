@@ -1,0 +1,10 @@
+2026-11-25 | AAPL | Kurs 355.58 | GEKAUFT 2.809497 | Konto 0.00 | Anteile 2.809497 | Gesamtwert 999.00
+2026-11-25 | MSFT | Kurs 489.93 | SHORT 2.039068 | Konto 1998.00 | Anteile -2.039068 | Gesamtwert 999.00
+2026-11-25 | NVDA | Kurs 149.30 | SHORT 6.691232 | Konto 1998.00 | Anteile -6.691232 | Gesamtwert 999.00
+2026-11-25 | GOOGL | Kurs 273.10 | SHORT 3.658004 | Konto 1998.00 | Anteile -3.658004 | Gesamtwert 999.00
+2026-11-25 | AMZN | Kurs 244.43 | GEKAUFT 4.087063 | Konto 0.00 | Anteile 4.087063 | Gesamtwert 999.00
+2026-11-25 | JPM | Kurs 316.74 | SHORT 3.154009 | Konto 1998.00 | Anteile -3.154009 | Gesamtwert 999.00
+2026-11-25 | KO | Kurs 97.59 | GEKAUFT 10.236715 | Konto 0.00 | Anteile 10.236715 | Gesamtwert 999.00
+2026-11-25 | XOM | Kurs 158.08 | SHORT 6.319591 | Konto 1998.00 | Anteile -6.319591 | Gesamtwert 999.00
+2026-11-25 | GLD | Kurs 327.45 | SHORT 3.05085 | Konto 1998.00 | Anteile -3.05085 | Gesamtwert 999.00
+2026-11-25 | BTC-USD | Kurs 60378.20 | SHORT 0.016545 | Konto 1997.96 | Anteile -0.016545 | Gesamtwert 999.00
