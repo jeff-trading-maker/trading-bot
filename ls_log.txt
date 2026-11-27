@@ -19,3 +19,4 @@
 2026-11-27 | KO | Kurs 97.40 | abwarten | Konto 0.00 | Anteile 10.236715 | Gesamtwert 997.06
 2026-11-27 | XOM | Kurs 160.18 | abwarten | Konto 1998.00 | Anteile -6.319591 | Gesamtwert 985.73
 2026-11-27 | GLD | Kurs 334.40 | abwarten | Konto 1998.00 | Anteile -3.05085 | Gesamtwert 977.80
+2026-11-27 | BTC-USD | Kurs 59839.53 | abwarten | Konto 1997.96 | Anteile -0.016545 | Gesamtwert 1007.91
