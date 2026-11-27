@@ -2,47 +2,48 @@
  "AAPL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "MSFT": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "NVDA": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "GOOGL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "AMZN": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27",
+  "gesperrt": false
  },
  "JPM": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "KO": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "XOM": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "GLD": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25"
+  "letzter_tag": "2026-11-27"
  },
  "BTC-USD": {
   "konto": 1000,

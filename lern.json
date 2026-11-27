@@ -2,49 +2,75 @@
  "AAPL": {
   "konto": 9.35596448243814e-05,
   "anteile": 2.809497,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 355.5799865722656,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 1.4,
-  "hoechst": 355.5799865722656
+  "hoechst": 358.5400085449219
  },
  "MSFT": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "NVDA": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "GOOGL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "AMZN": {
-  "konto": 0.00022006538813457155,
-  "anteile": 4.087063,
-  "letzter_tag": "2026-11-25",
+  "konto": 1037.5660452394222,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-27",
   "einstieg": 244.42999267578125,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 0.39,
-  "hoechst": 244.42999267578125
+  "hoechst": 254.1199951171875,
+  "treffer": 1,
+  "vorsicht": 0.0,
+  "nachzug": null,
+  "lektionen": [
+   {
+    "von": "2026-11-25",
+    "bis": "2026-11-27",
+    "kauf": 244.43,
+    "verkauf": 254.12,
+    "erg": 3.76,
+    "dauer": 1,
+    "hoch": 3.96,
+    "tief": 0.0,
+    "abstand": 0.39,
+    "vorher": 0.0,
+    "nachher": 0.0,
+    "nz_vorher": null,
+    "nz_nachher": null,
+    "hebel": "vorsicht",
+    "typ": "Gewinn",
+    "warum": "Der Trend hat gehalten, er lag zwischendurch sogar 4,0 % im Plus.",
+    "gelernt": "Regeln bleiben gleich.",
+    "vermieden": false
+   }
+  ],
+  "gesperrt": false
  },
  "JPM": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "KO": {
   "konto": 1.9658608039208048e-05,
   "anteile": 10.236715,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 97.58999633789062,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 2.45,
@@ -53,13 +79,13 @@
  "XOM": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "GLD": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "gesperrt": false
  },
  "BTC-USD": {

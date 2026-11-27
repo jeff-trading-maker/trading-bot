@@ -2,7 +2,7 @@
  "AAPL": {
   "konto": 9.35596448243814e-05,
   "anteile": 2.809497,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 355.5799865722656,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 1.4,
@@ -11,26 +11,26 @@
  "MSFT": {
   "konto": 1998.0015697351146,
   "anteile": -2.039068,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 489.92999267578125
  },
  "NVDA": {
   "konto": 1998.0019570619995,
   "anteile": -6.691232,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 149.3000030517578
  },
  "GOOGL": {
   "konto": 1998.0019138119578,
   "anteile": -3.658004,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 273.1000061035156
  },
  "AMZN": {
-  "konto": 0.00022006538813457155,
-  "anteile": 4.087063,
-  "letzter_tag": "2026-11-25",
-  "einstieg": 244.42999267578125,
+  "konto": 2073.05880167721,
+  "anteile": -4.078897,
+  "letzter_tag": "2026-11-27",
+  "einstieg": 254.1199951171875,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 0.39,
   "hoechst": 244.42999267578125
@@ -38,13 +38,13 @@
  "JPM": {
   "konto": 1998.0017790792717,
   "anteile": -3.154009,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 316.739990234375
  },
  "KO": {
   "konto": 1.9658608039208048e-05,
   "anteile": 10.236715,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 97.58999633789062,
   "einstieg_tag": "2026-11-25",
   "einstieg_abstand": 2.45,
@@ -53,13 +53,13 @@
  "XOM": {
   "konto": 1998.0019558946651,
   "anteile": -6.319591,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 158.0800018310547
  },
  "GLD": {
   "konto": 1998.0018688720795,
   "anteile": -3.05085,
-  "letzter_tag": "2026-11-25",
+  "letzter_tag": "2026-11-27",
   "einstieg": 327.45001220703125
  },
  "BTC-USD": {
