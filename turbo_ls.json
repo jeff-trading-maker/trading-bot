@@ -2,7 +2,7 @@
  "AAPL": {
   "konto": 5.749324941461964e-05,
   "anteile": 2.810564,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 355.44500732421875,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.78,
@@ -11,31 +11,31 @@
  "MSFT": {
   "konto": 1998.0018646345,
   "anteile": -2.039818,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 489.75
  },
  "NVDA": {
   "konto": 1998.0019963863901,
   "anteile": -6.692577,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 149.27000427246094
  },
  "GOOGL": {
   "konto": 1998.001896464546,
   "anteile": -3.659679,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 272.9750061035156
  },
  "AMZN": {
   "konto": 1998.0018885543427,
   "anteile": -4.090293,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 244.23699951171875
  },
  "JPM": {
   "konto": 1.14252134153503e-06,
   "anteile": 3.151224,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 317.0199890136719,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.02,
@@ -44,7 +44,7 @@
  "KO": {
   "konto": 7.987040157786396e-05,
   "anteile": 10.230424,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 97.6500015258789,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.83,
@@ -53,7 +53,7 @@
  "XOM": {
   "konto": 5.929132555593242e-05,
   "anteile": 6.316195,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 158.1649932861328,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.32,
@@ -62,7 +62,7 @@
  "GLD": {
   "konto": 2.316639051969105e-05,
   "anteile": 2.953433,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 332.4200134277344,
   "einstieg_tag": "2026-11-27 15:30",
   "einstieg_abstand": 0.08,
@@ -71,7 +71,7 @@
  "BTC-USD": {
   "konto": 1924.0637358392153,
   "anteile": -0.016274,
-  "letzter_tag": "2026-11-27 16:00",
+  "letzter_tag": "2026-11-27 17:00",
   "einstieg": 59113.51171875,
   "einstieg_tag": "2026-11-27 02:00",
   "einstieg_abstand": 0.03,

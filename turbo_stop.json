@@ -2,7 +2,7 @@
  "AAPL": {
   "konto": 5.749324941461964e-05,
   "anteile": 2.810564,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 355.44500732421875,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.78,
@@ -11,40 +11,40 @@
  "MSFT": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "gesperrt": false
  },
  "NVDA": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "gesperrt": false
  },
  "GOOGL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "gesperrt": false
  },
  "AMZN": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "gesperrt": false
  },
  "JPM": {
   "konto": 1.14252134153503e-06,
   "anteile": 3.151224,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 317.0199890136719,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.02,
-  "hoechst": 323.1000061035156
+  "hoechst": 323.7699890136719
  },
  "KO": {
   "konto": 7.987040157786396e-05,
   "anteile": 10.230424,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 97.6500015258789,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.83,
@@ -53,7 +53,7 @@
  "XOM": {
   "konto": 5.929132555593242e-05,
   "anteile": 6.316195,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "einstieg": 158.1649932861328,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.32,
@@ -62,7 +62,7 @@
  "GLD": {
   "konto": 7.518258234995301e-05,
   "anteile": 3.005237,
-  "letzter_tag": "2026-11-27 15:30",
+  "letzter_tag": "2026-11-27 16:30",
   "gesperrt": false,
   "einstieg": 332.4200134277344,
   "einstieg_tag": "2026-11-27 15:30",
@@ -72,7 +72,7 @@
  "BTC-USD": {
   "konto": 967.9768789305589,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-27 16:00",
+  "letzter_tag": "2026-11-27 17:00",
   "einstieg": 60644.6796875,
   "einstieg_tag": "2026-11-27 02:00",
   "einstieg_abstand": 0.03,
