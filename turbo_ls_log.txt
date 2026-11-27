@@ -80,3 +80,4 @@
 2026-11-27 17:30 | GLD | Kurs 333.49 | abwarten | Konto 0.00 | Anteile 2.953433 | Gesamtwert 984.94
 2026-11-27 18:30 | GLD | Kurs 332.75 | abwarten | Konto 0.00 | Anteile 2.953433 | Gesamtwert 982.75
 2026-11-27 18:00 | BTC-USD | Kurs 59869.58 | abwarten | Konto 1924.06 | Anteile -0.016274 | Gesamtwert 949.75
+2026-11-27 19:00 | BTC-USD | Kurs 59837.28 | abwarten | Konto 1924.06 | Anteile -0.016274 | Gesamtwert 950.27
