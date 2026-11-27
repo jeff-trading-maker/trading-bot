@@ -68,11 +68,11 @@
  "BTC-USD": {
   "konto": 0.03611161670346519,
   "anteile": 0.016207,
-  "letzter_tag": "2026-11-27 05:00",
+  "letzter_tag": "2026-11-27 07:00",
   "einstieg": 61331.9609375,
   "einstieg_tag": "2026-11-27 04:00",
   "einstieg_abstand": 0.3,
-  "hoechst": 61338.05078125,
+  "hoechst": 61694.3515625,
   "fehler": 1,
   "vorsicht": 0.1,
   "nachzug": null,
