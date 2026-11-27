@@ -2,49 +2,49 @@
  "AAPL": {
   "konto": 5.749324941461964e-05,
   "anteile": 2.810564,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "einstieg": 355.44500732421875,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.78,
-  "hoechst": 355.44500732421875
+  "hoechst": 358.4200134277344
  },
  "MSFT": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "gesperrt": false
  },
  "NVDA": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "gesperrt": false
  },
  "GOOGL": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "gesperrt": false
  },
  "AMZN": {
   "konto": 1000,
   "anteile": 0.0,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "gesperrt": false
  },
  "JPM": {
   "konto": 1.14252134153503e-06,
   "anteile": 3.151224,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "einstieg": 317.0199890136719,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.02,
-  "hoechst": 317.0199890136719
+  "hoechst": 323.1000061035156
  },
  "KO": {
   "konto": 7.987040157786396e-05,
   "anteile": 10.230424,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "einstieg": 97.6500015258789,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.83,
@@ -53,28 +53,32 @@
  "XOM": {
   "konto": 5.929132555593242e-05,
   "anteile": 6.316195,
-  "letzter_tag": "2026-11-25 21:30",
+  "letzter_tag": "2026-11-27 15:30",
   "einstieg": 158.1649932861328,
   "einstieg_tag": "2026-11-25 21:30",
   "einstieg_abstand": 0.32,
-  "hoechst": 158.1649932861328
+  "hoechst": 161.19000244140625
  },
  "GLD": {
-  "konto": 1000,
-  "anteile": 0.0,
-  "letzter_tag": "2026-11-25 21:30",
-  "gesperrt": false
+  "konto": 7.518258234995301e-05,
+  "anteile": 3.005237,
+  "letzter_tag": "2026-11-27 15:30",
+  "gesperrt": false,
+  "einstieg": 332.4200134277344,
+  "einstieg_tag": "2026-11-27 15:30",
+  "einstieg_abstand": 0.08,
+  "hoechst": 332.4200134277344
  },
  "BTC-USD": {
-  "konto": 0.03611161670346519,
-  "anteile": 0.016207,
-  "letzter_tag": "2026-11-27 14:00",
+  "konto": 957.1307433580589,
+  "anteile": 0.0,
+  "letzter_tag": "2026-11-27 16:00",
   "einstieg": 61331.9609375,
   "einstieg_tag": "2026-11-27 04:00",
   "einstieg_abstand": 0.3,
   "hoechst": 61694.3515625,
-  "fehler": 1,
-  "vorsicht": 0.1,
+  "fehler": 2,
+  "vorsicht": 0.2,
   "nachzug": null,
   "lektionen": [
    {
@@ -95,6 +99,26 @@
     "typ": "Trend zu Ende",
     "warum": "Der Kurs fiel nach dem Kauf um bis zu 0,3 % und kam nicht mehr \u00fcber den Kaufkurs. Als er gekauft hat, war der Aufw\u00e4rtstrend schon fast vorbei.",
     "gelernt": "Er kauft diese Aktie jetzt erst ab 0,1 % Abstand statt 0 %. Diesen Kauf h\u00e4tte er auch mit der neuen Regel gemacht.",
+    "vermieden": false
+   },
+   {
+    "von": "2026-11-27 04:00",
+    "bis": "2026-11-27 15:00",
+    "kauf": 61331.9609,
+    "verkauf": 59113.5117,
+    "erg": -3.81,
+    "dauer": 11,
+    "hoch": 0.59,
+    "tief": -3.62,
+    "abstand": 0.3,
+    "vorher": 0.1,
+    "nachher": 0.2,
+    "nz_vorher": null,
+    "nz_nachher": null,
+    "hebel": "vorsicht",
+    "typ": "Trend zu Ende",
+    "warum": "Der Kurs fiel nach dem Kauf um bis zu 3,6 % und kam nicht mehr \u00fcber den Kaufkurs. Als er gekauft hat, war der Aufw\u00e4rtstrend schon fast vorbei.",
+    "gelernt": "Er kauft diese Aktie jetzt erst ab 0,2 % Abstand statt 0,1 %. Diesen Kauf h\u00e4tte er auch mit der neuen Regel gemacht.",
     "vermieden": false
    }
   ],
